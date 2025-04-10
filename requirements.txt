@@ -1,0 +1,6 @@
+requests
+colorama
+tqdm
+termcolor
+beautifulsoup4
+lxml
