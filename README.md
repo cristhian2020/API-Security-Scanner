@@ -16,8 +16,24 @@ A Python-based CLI tool that scans HTTP requests (Burp Suite format) for API vul
 git clone https://github.com/vraj002/Api-vulnerability-scanner.git
 cd Api-vulnerability-scanner
 pip install -r requirements.txt
+```
 
-## 🚀 Usage
+**## Usage**
 
-```bash
-python3 vulnsec.py -h
+Run the script using the command line:
+
+- ****
+  ** help menu**
+  ```bash
+  python3 vulnsec.py -h
+  ```
+
+- **Scan a HTTP request file:**
+  ```bash
+  python3 vulnsec.py -f file.txt -a
+  ```
+
+- **URL Based Scan :**
+  ```bash
+  python3 vulnsec.py -u http://example.com
+  ```
