@@ -17,13 +17,7 @@ git clone https://github.com/vraj002/Api-vulnerability-scanner.git
 cd Api-vulnerability-scanner
 pip install -r requirements.txt
 
-## Usage
+## 🚀 Usage
 
 ```bash
 python3 vulnsec.py -h
-
-```bash
-python3 vulnsec.py -f file.txt -a
-
-```bash
-python3 vulnsec.py -u http://example.com
