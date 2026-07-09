@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Security Scanner - DevSecOps Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * { font-family: 'Inter', sans-serif; }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .scan-card {
+            transition: all 0.3s ease;
+        }
+        
+        .scan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .severity-critical {
+            border-left-color: #ef4444;
+        }
+        .severity-high {
+            border-left-color: #f97316;
+        }
+        .severity-medium {
+            border-left-color: #eab308;
+        }
+        .severity-low {
+            border-left-color: #3b82f6;
+        }
+        .severity-info {
+            border-left-color: #9ca3af;
+        }
+        
+        .badge-critical {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        .badge-high {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+        .badge-medium {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .badge-low {
+            background: #bfdbfe;
+            color: #1e40af;
+        }
+        .badge-info {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        #progress-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .pulse-animation {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .score-Aplus { color: #22c55e; }
+        .score-A { color: #22c55e; }
+        .score-B { color: #eab308; }
+        .score-C { color: #f97316; }
+        .score-D { color: #ef4444; }
+        
+        .code-block {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">🔒 API Security Scanner</h1>
+                    <p class="text-purple-100 mt-1">Detecta y corrige vulnerabilidades en tus APIs</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="bg-white/20 px-4 py-2 rounded-lg text-sm">v1.0.0</span>
+                    <button onclick="showHistory()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
+                        📋 Historial
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Sección de entrada -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8 scan-card">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">🔍 Escanea tu API</h2>
+            <p class="text-gray-600 mb-6">Ingresa la URL de tu API para analizar su seguridad automáticamente</p>
+            
+            <form id="scanForm" onsubmit="startScan(event)">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="url" id="urlInput" 
+                           placeholder="https://api.tudominio.com/v1"
+                           class="flex-1 p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                           required>
+                    <button type="submit" 
+                            id="scanButton"
+                            class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                        <span>🚀</span>
+                        <span>Iniciar Escaneo</span>
+                    </button>
+                </div>
+                
+                <!-- Opciones avanzadas -->
+                <details class="mt-4">
+                    <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">⚙️ Opciones avanzadas</summary>
+                    <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                        <label class="flex items-center gap-3 text-sm">
+                            <input type="checkbox" id="deepScan" checked>
+                            <span>Escaneo profundo (incluye pruebas de XSS)</span>
+                        </label>
+                        <label class="flex items-center gap-3 text-sm mt-2">
+                            <input type="checkbox" id="sslCheck" checked>
+                            <span>Verificar SSL/TLS</span>
+                        </label>
+                    </div>
+                </details>
+            </form>
+        </section>
+
+        <!-- Barra de progreso -->
+        <section id="progressSection" class="hidden bg-white rounded-xl shadow-lg p-8 mb-8 fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">📊 Escaneando...</h3>
+                <span id="statusText" class="text-sm text-gray-500 pulse-animation">Iniciando...</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-purple-500 to-indigo-600 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-sm text-gray-600 mt-2">
+                <span id="progressMessage">Preparando escaneo...</span>
+                <span id="progressText">0%</span>
+            </div>
+        </section>
+
+        <!-- Resultados -->
+        <section id="resultsSection" class="hidden fade-in">
+            <!-- Resumen de puntuación -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 scan-card">
+                    <p class="text-sm text-gray-500">Seguro</p>
+                    <p class="text-2xl font-bold" id="secureCount">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 scan-card">
+                    <p class="text-sm text-gray-500">Medio</p>
+                    <p class="text-2xl font-bold" id="mediumCount">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500 scan-card">
+                    <p class="text-sm text-gray-500">Crítico</p>
+                    <p class="text-2xl font-bold" id="criticalCount">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 scan-card text-center">
+                    <p class="text-sm text-gray-500">Puntuación</p>
+                    <p class="text-3xl font-bold score-Aplus" id="scoreDisplay">A+</p>
+                </div>
+            </div>
+
+            <!-- Lista de vulnerabilidades -->
+            <div id="vulnerabilitiesList" class="space-y-4">
+                <!-- Renderizado dinámico -->
+            </div>
+
+            <!-- Botones de descarga -->
+            <div class="mt-8 flex flex-wrap gap-4">
+                <button onclick="downloadReport('json')" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+                    📊 Descargar JSON
+                </button>
+                <button onclick="downloadReport('html')" 
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+                    🌐 Descargar HTML
+                </button>
+                <button onclick="resetScan()" 
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+                    🔄 Nuevo Escaneo
+                </button>
+            </div>
+        </section>
+
+        <!-- Historial -->
+        <section id="historySection" class="hidden bg-white rounded-xl shadow-lg p-8 mt-8 fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">📋 Historial de Escaneos</h2>
+                <button onclick="hideHistory()" class="text-gray-500 hover:text-gray-700">✕ Cerrar</button>
+            </div>
+            <div id="historyList" class="space-y-3">
+                <!-- Renderizado dinámico -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="gradient-bg text-white mt-12 py-6">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-sm text-purple-100">API Security Scanner v1.0 - Desarrollado para Monografía de Ciberseguridad</p>
+            <p class="text-xs text-purple-200 mt-1">Basado en OWASP API Security Top 10</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentScanId = null;
+        let monitoringInterval = null;
+        
+        // Iniciar escaneo
+        async function startScan(event) {
+            event.preventDefault();
+            
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                alert('⚠️ Por favor, ingresa una URL válida');
+                return;
+            }
+            
+            const deepScan = document.getElementById('deepScan').checked;
+            const sslCheck = document.getElementById('sslCheck').checked;
+            
+            // Mostrar progreso
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('historySection').classList.add('hidden');
+            
+            // Deshabilitar botón
+            const scanButton = document.getElementById('scanButton');
+            scanButton.disabled = true;
+            scanButton.innerHTML = '⏳ Escaneando...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('deep_scan', deepScan);
+                formData.append('ssl_check', sslCheck);
+                
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                currentScanId = data.scan_id;
+                
+                // Iniciar monitoreo
+                monitorScan();
+                
+            } catch (error) {
+                alert('❌ Error al iniciar el escaneo: ' + error.message);
+                resetScan();
+            }
+        }
+        
+        // Monitorear progreso
+        async function monitorScan() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+            }
+            
+            monitoringInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${currentScanId}`);
+                    const data = await response.json();
+                    
+                    // Actualizar barra de progreso
+                    document.getElementById('progressBar').style.width = data.progress + '%';
+                    document.getElementById('progressText').textContent = data.progress + '%';
+                    document.getElementById('progressMessage').textContent = data.message || 'Escaneando...';
+                    document.getElementById('statusText').textContent = data.status;
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(monitoringInterval);
+                        showResults();
+                    } else if (data.status === 'failed') {
+                        clearInterval(monitoringInterval);
+                        alert('❌ El escaneo falló: ' + (data.error || 'Error desconocido'));
+                        resetScan();
+                    }
+                    
+                } catch (error) {
+                    console.error('Error al monitorear:', error);
+                }
+            }, 2000);
+        }
+        
+        // Mostrar resultados
+        async function showResults() {
+            try {
+                const response = await fetch(`/api/report/${currentScanId}`);
+                const report = await response.json();
+                
+                // Actualizar contadores
+                document.getElementById('secureCount').textContent = report.secure_count || 0;
+                document.getElementById('mediumCount').textContent = report.medium_count || 0;
+                document.getElementById('criticalCount').textContent = report.critical_count || 0;
+                
+                const scoreDisplay = document.getElementById('scoreDisplay');
+                scoreDisplay.textContent = report.score || 'A+';
+                scoreDisplay.className = 'text-3xl font-bold score-' + (report.score || 'Aplus');
+                
+                // Renderizar vulnerabilidades
+                renderVulnerabilities(report.vulnerabilities || []);
+                
+                // Mostrar resultados
+                document.getElementById('resultsSection').classList.remove('hidden');
+                document.getElementById('progressSection').classList.add('hidden');
+                
+                // Restaurar botón
+                const scanButton = document.getElementById('scanButton');
+                scanButton.disabled = false;
+                scanButton.innerHTML = '🚀 Iniciar Escaneo';
+                
+            } catch (error) {
+                alert('❌ Error al cargar el reporte: ' + error.message);
+                resetScan();
+            }
+        }
+        
+        // Renderizar vulnerabilidades
+        function renderVulnerabilities(vulnerabilities) {
+            const container = document.getElementById('vulnerabilitiesList');
+            container.innerHTML = '';
+            
+            if (vulnerabilities.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-lg p-8 text-center border-l-4 border-green-500">
+                        <p class="text-2xl">🎉</p>
+                        <h3 class="text-xl font-bold text-gray-800 mt-2">¡No se encontraron vulnerabilidades!</h3>
+                        <p class="text-gray-600 mt-1">Tu API tiene una configuración de seguridad excelente.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            vulnerabilities.forEach((vuln, index) => {
+                const severityClass = vuln.severity || 'info';
+                const severityLabel = {
+                    'critical': '🔴 CRÍTICO',
+                    'high': '🟠 ALTO',
+                    'medium': '🟡 MEDIO',
+                    'low': '🔵 BAJO',
+                    'info': '⚪ INFORMATIVO'
+                }[severityClass] || '⚪ INFORMATIVO';
+                
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-xl shadow-lg p-6 border-l-4 severity-${severityClass} scan-card fade-in`;
+                card.style.animationDelay = `${index * 0.1}s`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-lg text-gray-800">${vuln.title || 'Vulnerabilidad'}</h4>
+                            <p class="text-gray-600 mt-1">${vuln.description || ''}</p>
+                            ${vuln.impact ? `<p class="text-sm text-gray-500 mt-1">💥 Impacto: ${vuln.impact}</p>` : ''}
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold badge-${severityClass} whitespace-nowrap ml-4">
+                            ${severityLabel}
+                        </span>
+                    </div>
+                    
+                    ${vuln.recommendation ? `
+                        <details class="mt-4">
+                            <summary class="text-purple-600 cursor-pointer font-medium hover:text-purple-800 transition-colors">
+                                💡 Ver cómo solucionarlo
+                            </summary>
+                            <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                <h5 class="font-semibold text-gray-800 mb-2">📝 Recomendación:</h5>
+                                <p class="text-gray-700 mb-3">${vuln.recommendation}</p>
+                                
+                                ${vuln.code_example ? `
+                                    <h5 class="font-semibold text-gray-800 mt-4 mb-2">📌 Código ejemplo:</h5>
+                                    <div class="code-block">
+                                        <pre>${vuln.code_example}</pre>
+                                    </div>
+                                ` : ''}
+                                
+                                ${vuln.link ? `
+                                    <a href="${vuln.link}" target="_blank" 
+                                       class="inline-block mt-3 text-purple-600 hover:text-purple-800 hover:underline text-sm">
+                                        📖 Leer más en OWASP →
+                                    </a>
+                                ` : ''}
+                            </div>
+                        </details>
+                    ` : ''}
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        // Descargar reporte
+        async function downloadReport(format) {
+            if (!currentScanId) return;
+            window.location.href = `/api/download/${currentScanId}?format=${format}`;
+        }
+        
+        // Reiniciar escaneo
+        function resetScan() {
+            currentScanId = null;
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+            }
+            
+            document.getElementById('progressSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            
+            const scanButton = document.getElementById('scanButton');
+            scanButton.disabled = false;
+            scanButton.innerHTML = '🚀 Iniciar Escaneo';
+            
+            document.getElementById('urlInput').focus();
+        }
+        
+        // Mostrar historial
+        async function showHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+                
+                const container = document.getElementById('historyList');
+                container.innerHTML = '';
+                
+                if (history.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-8">No hay escaneos en el historial</p>';
+                } else {
+                    history.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-200';
+                        div.innerHTML = `
+                            <div>
+                                <p class="font-medium text-gray-800">${item.url}</p>
+                                <p class="text-sm text-gray-500">${new Date(item.started_at).toLocaleString()}</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm font-semibold score-${item.score || 'Aplus'}">${item.score || 'A+'}</span>
+                                <span class="text-sm px-2 py-1 rounded-full ${item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                    ${item.status}
+                                </span>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+                
+                document.getElementById('historySection').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error al cargar historial:', error);
+            }
+        }
+        
+        function hideHistory() {
+            document.getElementById('historySection').classList.add('hidden');
+        }
+        
+        // Enter para iniciar escaneo
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('scanForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
