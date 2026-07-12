@@ -113,6 +113,10 @@
                     <button onclick="showHistory()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
                         📋 Historial
                     </button>
+                    <!-- En el header, agregar botón de Dashboard -->
+                    <button onclick="toggleDashboard()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
+                        📊 Dashboard
+                    </button>
                 </div>
             </div>
         </div>
@@ -226,6 +230,96 @@
             </div>
         </section>
     </main>
+            <!-- Dashboard Section -->
+        <section id="dashboardSection" class="hidden mt-8">
+            <div class="bg-white rounded-xl shadow-lg p-8 fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">📊 Dashboard de Tendencias</h2>
+                    <div class="flex gap-2">
+                        <button onclick="loadDashboard()" class="text-purple-600 hover:text-purple-800 text-sm">
+                            🔄 Actualizar
+                        </button>
+                        <button onclick="exportDashboard()" class="text-blue-600 hover:text-blue-800 text-sm">
+                            📥 Exportar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Estadísticas Generales -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500">Total Escaneos</p>
+                        <p class="text-2xl font-bold" id="dashTotalScans">0</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500">Puntuación Promedio</p>
+                        <p class="text-2xl font-bold score-Aplus" id="dashAvgScore">N/A</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500">URLs Únicas</p>
+                        <p class="text-2xl font-bold" id="dashUniqueUrls">0</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-sm text-gray-500">Vulnerabilidades Totales</p>
+                        <p class="text-2xl font-bold" id="dashTotalVulns">0</p>
+                    </div>
+                </div>
+                
+                <!-- Distribución de Vulnerabilidades -->
+                <div class="mb-8">
+                    <h3 class="font-semibold text-gray-800 mb-4">📊 Distribución por Severidad</h3>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div id="dashCritical" class="bg-red-50 rounded-lg p-4 text-center border border-red-200">
+                            <p class="text-sm text-red-600">Críticas</p>
+                            <p class="text-2xl font-bold text-red-600">0</p>
+                        </div>
+                        <div id="dashHigh" class="bg-orange-50 rounded-lg p-4 text-center border border-orange-200">
+                            <p class="text-sm text-orange-600">Altas</p>
+                            <p class="text-2xl font-bold text-orange-600">0</p>
+                        </div>
+                        <div id="dashMedium" class="bg-yellow-50 rounded-lg p-4 text-center border border-yellow-200">
+                            <p class="text-sm text-yellow-600">Medias</p>
+                            <p class="text-2xl font-bold text-yellow-600">0</p>
+                        </div>
+                        <div id="dashLow" class="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
+                            <p class="text-sm text-blue-600">Bajas</p>
+                            <p class="text-2xl font-bold text-blue-600">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Vulnerabilidades más frecuentes -->
+                <div class="mb-8">
+                    <h3 class="font-semibold text-gray-800 mb-4">🔍 Vulnerabilidades más Frecuentes</h3>
+                    <div id="dashFrequentVulns" class="space-y-2">
+                        <!-- Renderizado dinámico -->
+                    </div>
+                </div>
+                
+                <!-- Análisis por URL -->
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-4">🌐 Análisis por URL</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">URL</th>
+                                    <th class="px-4 py-2 text-center">Último Score</th>
+                                    <th class="px-4 py-2 text-center">Mejor Score</th>
+                                    <th class="px-4 py-2 text-center">Peor Score</th>
+                                    <th class="px-4 py-2 text-center">Críticas</th>
+                                    <th class="px-4 py-2 text-center">Medias</th>
+                                    <th class="px-4 py-2 text-center">Escaneos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashUrlTable">
+                                <!-- Renderizado dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
 
     <!-- Footer -->
     <footer class="gradient-bg text-white mt-12 py-6">
@@ -489,6 +583,109 @@
             document.getElementById('historySection').classList.add('hidden');
         }
         
+        // DASHBOARD FUNCTIONS
+        let dashboardVisible = false;
+        
+        function toggleDashboard() {
+            dashboardVisible = !dashboardVisible;
+            const section = document.getElementById('dashboardSection');
+            if (dashboardVisible) {
+                section.classList.remove('hidden');
+                loadDashboard();
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+        
+        async function loadDashboard() {
+            try {
+                // Cargar estadísticas generales
+                const summaryRes = await fetch('/api/dashboard/summary');
+                const summary = await summaryRes.json();
+                
+                document.getElementById('dashTotalScans').textContent = summary.total_scans || 0;
+                document.getElementById('dashAvgScore').textContent = summary.avg_score || 'N/A';
+                document.getElementById('dashUniqueUrls').textContent = summary.unique_urls || 0;
+                document.getElementById('dashTotalVulns').textContent = summary.total_vulnerabilities || 0;
+                
+                // Cargar distribución
+                const distRes = await fetch('/api/dashboard/distribution');
+                const dist = await distRes.json();
+                
+                document.getElementById('dashCritical').querySelector('p:last-child').textContent = dist.critical || 0;
+                document.getElementById('dashHigh').querySelector('p:last-child').textContent = dist.high || 0;
+                document.getElementById('dashMedium').querySelector('p:last-child').textContent = dist.medium || 0;
+                document.getElementById('dashLow').querySelector('p:last-child').textContent = dist.low || 0;
+                
+                // Cargar vulnerabilidades frecuentes
+                const freqRes = await fetch('/api/dashboard/frequent?limit=5');
+                const frequent = await freqRes.json();
+                
+                const container = document.getElementById('dashFrequentVulns');
+                container.innerHTML = '';
+                if (frequent.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay datos suficientes</p>';
+                } else {
+                    frequent.forEach((vuln, i) => {
+                        const severityColors = {
+                            'critical': 'bg-red-100 text-red-800',
+                            'high': 'bg-orange-100 text-orange-800',
+                            'medium': 'bg-yellow-100 text-yellow-800',
+                            'low': 'bg-blue-100 text-blue-800',
+                            'info': 'bg-gray-100 text-gray-800'
+                        };
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200';
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-medium">${i + 1}.</span>
+                                <span class="font-medium">${vuln.title}</span>
+                                <span class="px-2 py-1 rounded-full text-xs ${severityColors[vuln.severity] || 'bg-gray-100'}">${vuln.severity}</span>
+                            </div>
+                            <span class="text-sm text-gray-500">${vuln.count} veces</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+                
+                // Cargar análisis por URL
+                const urlRes = await fetch('/api/dashboard/urls');
+                const urls = await urlRes.json();
+                
+                const tableBody = document.getElementById('dashUrlTable');
+                tableBody.innerHTML = '';
+                if (urls.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-4">No hay datos disponibles</td></tr>';
+                } else {
+                    urls.forEach(url => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b hover:bg-gray-50';
+                        tr.innerHTML = `
+                            <td class="px-4 py-2 text-xs truncate max-w-xs">${url.url}</td>
+                            <td class="px-4 py-2 text-center font-bold score-${url.last_score || 'Aplus'}">${url.last_score || 'N/A'}</td>
+                            <td class="px-4 py-2 text-center score-${url.best_score || 'Aplus'}">${url.best_score || 'N/A'}</td>
+                            <td class="px-4 py-2 text-center score-${url.worst_score || 'D'}">${url.worst_score || 'N/A'}</td>
+                            <td class="px-4 py-2 text-center text-red-600">${url.total_critical || 0}</td>
+                            <td class="px-4 py-2 text-center text-yellow-600">${url.total_medium || 0}</td>
+                            <td class="px-4 py-2 text-center">${url.scans ? url.scans.length : 0}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('Error cargando dashboard:', error);
+            }
+        }
+        
+        async function exportDashboard() {
+            try {
+                window.location.href = '/api/dashboard/export';
+            } catch (error) {
+                console.error('Error exportando:', error);
+                alert('Error al exportar el dashboard');
+            }
+        }
         // Enter para iniciar escaneo
         document.getElementById('urlInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -496,5 +693,6 @@
             }
         });
     </script>
+
 </body>
 </html>

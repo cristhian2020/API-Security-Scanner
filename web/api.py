@@ -17,6 +17,10 @@ from datetime import datetime
 import sys
 sys.path.append('..')
 
+from backend.trends import TrendsDashboard
+
+dashboard = TrendsDashboard("reports")
+
 app = FastAPI(
     title="API Security Scanner",
     description="Herramienta automatizada para detección de vulnerabilidades en APIs",
@@ -192,6 +196,53 @@ async def get_history():
             'started_at': scan['started_at']
         })
     return JSONResponse(history)
+
+@app.get("/api/dashboard/summary")
+async def get_dashboard_summary():
+    """Obtiene estadísticas generales del dashboard"""
+    return JSONResponse(dashboard.get_summary_stats())
+
+@app.get("/api/dashboard/trends")
+async def get_dashboard_trends(days: int = 30):
+    """Obtiene tendencias por severidad"""
+    return JSONResponse(dashboard.get_trend_by_severity(days))
+
+@app.get("/api/dashboard/frequent")
+async def get_frequent_vulnerabilities(limit: int = 10):
+    """Obtiene las vulnerabilidades más frecuentes"""
+    return JSONResponse(dashboard.get_frequent_vulnerabilities(limit))
+
+@app.get("/api/dashboard/evolution")
+async def get_score_evolution(days: int = 30):
+    """Obtiene evolución de puntuación"""
+    return JSONResponse(dashboard.get_score_evolution(days))
+
+@app.get("/api/dashboard/distribution")
+async def get_vulnerability_distribution():
+    """Obtiene distribución de vulnerabilidades"""
+    return JSONResponse(dashboard.get_vulnerability_distribution())
+
+@app.get("/api/dashboard/urls")
+async def get_url_analysis():
+    """Obtiene análisis por URL"""
+    return JSONResponse(dashboard.get_url_analysis())
+
+@app.get("/api/dashboard/daily")
+async def get_daily_stats(days: int = 7):
+    """Obtiene estadísticas diarias"""
+    return JSONResponse(dashboard.get_daily_stats(days))
+
+@app.get("/api/dashboard/full")
+async def get_full_dashboard(days: int = 30):
+    """Obtiene dashboard completo"""
+    return JSONResponse(dashboard.get_full_dashboard(days))
+
+@app.get("/api/dashboard/export")
+async def export_dashboard():
+    """Exporta dashboard a JSON"""
+    if dashboard.export_to_json("dashboard_export.json"):
+        return FileResponse("dashboard_export.json", media_type="application/json", filename="dashboard_export.json")
+    return JSONResponse({"error": "Error al exportar"}, status_code=500)
 
 if __name__ == "__main__":
     import uvicorn

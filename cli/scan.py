@@ -5,13 +5,17 @@
 API Security Scanner - Interfaz CLI
 """
 
-from backend.scaner import APIScanner
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.scaner import APIScanner
 import json
 import argparse
-sys.path.append('..')
 
 def main():
+    if sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(
         description="API Security Scanner - Herramienta de línea de comandos",
         epilog="Ejemplo: python scan.py https://api.ejemplo.com --json"
