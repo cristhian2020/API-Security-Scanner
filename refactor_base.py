@@ -1,4 +1,86 @@
-{% extends "base.html" %}
+import os
+
+with open("web/templates/index.html", "r", encoding="utf-8") as f:
+    content = f.read()
+
+# Base HTML
+base_html = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Security Scanner - DevSecOps Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    {% block extra_head %}{% endblock %}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .scan-card { transition: all 0.3s ease; }
+        .scan-card:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .severity-critical { border-left-color: #ef4444; }
+        .severity-high { border-left-color: #f97316; }
+        .severity-medium { border-left-color: #eab308; }
+        .severity-low { border-left-color: #3b82f6; }
+        .severity-info { border-left-color: #9ca3af; }
+        .badge-critical { background: #fecaca; color: #991b1b; }
+        .badge-high { background: #fed7aa; color: #9a3412; }
+        .badge-medium { background: #fef9c3; color: #854d0e; }
+        .badge-low { background: #bfdbfe; color: #1e40af; }
+        .badge-info { background: #e5e7eb; color: #374151; }
+        .score-Aplus { color: #22c55e; }
+        .score-A { color: #22c55e; }
+        .score-B { color: #eab308; }
+        .score-C { color: #f97316; }
+        .score-D { color: #ef4444; }
+        .code-block {
+            background: #1e1e2e; color: #cdd6f4; padding: 1rem;
+            border-radius: 0.5rem; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.875rem;
+        }
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold"><a href="/">🔒 API Security Scanner</a></h1>
+                    <p class="text-purple-100 mt-1">Detecta y corrige vulnerabilidades en tus APIs</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="bg-white/20 px-4 py-2 rounded-lg text-sm">v1.0.0</span>
+                    <a href="/" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
+                        🚀 Escanear
+                    </a>
+                    <a href="/history" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
+                        📋 Historial
+                    </a>
+                    <a href="/dashboard" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm">
+                        📊 Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+"""
+with open("web/templates/base.html", "w", encoding="utf-8") as f:
+    f.write(base_html)
+
+# Now we need to extract index.html parts.
+# Fortunately, I can just use a simplified version of index.html that inherits base.html
+
+index_html = """{% extends "base.html" %}
 
 {% block extra_css %}
         #progress-bar { transition: width 0.5s ease; }
@@ -284,7 +366,7 @@
                             ${vuln.code_example ? `
                             <div class="mt-4">
                                 <h5 class="font-semibold text-gray-700 text-sm mb-2">Ejemplo de solución:</h5>
-                                <div class="code-block">${vuln.code_example.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}</div>
+                                <div class="code-block">${vuln.code_example.replace(/\\n/g, '<br>').replace(/ /g, '&nbsp;')}</div>
                             </div>` : ''}
                             
                             ${vuln.link ? `
@@ -310,3 +392,6 @@
         }
     </script>
 {% endblock %}
+"""
+with open("web/templates/index.html", "w", encoding="utf-8") as f:
+    f.write(index_html)

@@ -1,6 +1,6 @@
 {
-  "url": "https://httpbin.org/get",
-  "timestamp": "2026-07-12T17:01:44.509844",
+  "url": "https://cliza.gob.bo/cliadmin/formulario/login/",
+  "timestamp": "2026-07-12T18:02:35.775633",
   "vulnerabilities": [
     {
       "title": "Exposici\u00f3n de informaci\u00f3n del servidor (Fingerprinting)",
@@ -23,6 +23,26 @@
       "link": "https://owasp.org/www-project-api-security-top-10/#api2-2023-broken-authentication"
     },
     {
+      "title": "Cookies SameSite not set",
+      "severity": "low",
+      "detected": true,
+      "description": "Vulnerabilidad detectada por VulnAPI: Cookies SameSite not set.",
+      "impact": "Exposici\u00f3n de seguridad identificada en los est\u00e1ndares de OWASP.",
+      "recommendation": "Valida la configuraci\u00f3n del endpoint para seguir las mejores pr\u00e1cticas de seguridad de APIs.",
+      "code_example": "",
+      "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesite-value"
+    },
+    {
+      "title": "Cookies Expires not set",
+      "severity": "low",
+      "detected": true,
+      "description": "Vulnerabilidad detectada por VulnAPI: Cookies Expires not set.",
+      "impact": "Exposici\u00f3n de seguridad identificada en los est\u00e1ndares de OWASP.",
+      "recommendation": "Valida la configuraci\u00f3n del endpoint para seguir las mejores pr\u00e1cticas de seguridad de APIs.",
+      "code_example": "",
+      "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#security"
+    },
+    {
       "title": "Header X-Content-Type-Options faltante",
       "severity": "medium",
       "detected": true,
@@ -33,14 +53,14 @@
       "link": "https://owasp.org/www-project-secure-headers/#x-content-type-options"
     },
     {
-      "title": "CORS permite cualquier origen (*)",
-      "severity": "critical",
+      "title": "CORS Headers are missing",
+      "severity": "medium",
       "detected": true,
-      "description": "CORS est\u00e1 configurado con '*' permitiendo que cualquier sitio web externo acceda a los recursos de tu API.",
-      "impact": "Un atacante puede alojar un sitio web malicioso que realice peticiones no deseadas a tu API en nombre de un usuario autenticado.",
-      "recommendation": "Restringe CORS a dominios espec\u00edficos y de confianza. Nunca utilices '*' si manejas credenciales o datos de sesi\u00f3n.",
-      "code_example": "# En FastAPI - Configuraci\u00f3n segura de CORS\nfrom fastapi.middleware.cors import CORSMiddleware\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\"https://tu-sitio-seguro.com\"],\n    allow_credentials=True,\n    allow_methods=[\"GET\", \"POST\"],\n    allow_headers=[\"*\"],\n)",
-      "link": "https://owasp.org/www-project-secure-headers/#cross-origin-resource-sharing"
+      "description": "Vulnerabilidad detectada por VulnAPI: CORS Headers are missing.",
+      "impact": "Exposici\u00f3n de seguridad identificada en los est\u00e1ndares de OWASP.",
+      "recommendation": "Valida la configuraci\u00f3n del endpoint para seguir las mejores pr\u00e1cticas de seguridad de APIs.",
+      "code_example": "",
+      "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin"
     },
     {
       "title": "Directiva CSP frame-ancestors faltante",
@@ -81,25 +101,49 @@
       "recommendation": "Configura HSTS con un 'max-age' prolongado, incluyendo subdominios y pre-carga si es posible.",
       "code_example": "# Agregar HSTS (forzar HTTPS durante 1 a\u00f1o)\nresponse.headers[\"Strict-Transport-Security\"] = \"max-age=31536000; includeSubDomains; preload\" ",
       "link": "https://owasp.org/www-project-secure-headers/#strict-transport-security"
+    },
+    {
+      "title": "M\u00e9todo HTTP TRACE habilitado",
+      "severity": "medium",
+      "detected": true,
+      "description": "El m\u00e9todo HTTP TRACE est\u00e1 activo en el servidor web de la API.",
+      "impact": "Permite ataques de Cross-Site Tracking (XST), donde un atacante puede robar cookies de sesi\u00f3n y credenciales enviadas en las cabeceras HTTP.",
+      "recommendation": "Deshabilita el m\u00e9todo TRACE en la configuraci\u00f3n de tu servidor proxy o servidor web.",
+      "code_example": "# En Nginx:\nif ($request_method ~ ^(TRACE)$ ) {\n    return 405;\n}",
+      "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/TRACE"
+    },
+    {
+      "title": "Falta de L\u00edmite de Peticiones (Rate Limiting)",
+      "severity": "high",
+      "detected": true,
+      "description": "Se enviaron 30 peticiones simult\u00e1neas a la API y ninguna fue bloqueada o limitada (HTTP 429).",
+      "impact": "Permite ataques de Fuerza Bruta, Denegaci\u00f3n de Servicio (DoS) y consumo excesivo de recursos de la API.",
+      "recommendation": "Implementa un mecanismo de Rate Limiting por IP o token de usuario (ej. 100 peticiones por minuto).",
+      "code_example": "# En FastAPI usando slowapi:\\nfrom slowapi import Limiter\\nlimiter = Limiter(key_func=get_remote_address)\\n\\n@app.get(\"/api\")\\n@limiter.limit(\"5/minute\")\\nasync def endpoint():\\n    pass",
+      "link": "https://owasp.org/www-project-api-security-top-10/#api4-2023-unrestricted-resource-consumption"
     }
   ],
-  "secure_count": 0,
-  "medium_count": 3,
+  "secure_count": 2,
+  "medium_count": 5,
   "critical_count": 3,
   "score": "D",
   "summary": {
-    "critical": [
-      "CORS permite cualquier origen (*)"
-    ],
+    "critical": [],
     "high": [
       "Header Content-Security-Policy (CSP) faltante",
-      "Header Strict-Transport-Security (HSTS) faltante"
+      "Header Strict-Transport-Security (HSTS) faltante",
+      "Falta de L\u00edmite de Peticiones (Rate Limiting)"
     ],
     "medium": [
       "Header X-Content-Type-Options faltante",
+      "CORS Headers are missing",
       "Directiva CSP frame-ancestors faltante",
-      "Header X-Frame-Options faltante"
+      "Header X-Frame-Options faltante",
+      "M\u00e9todo HTTP TRACE habilitado"
     ],
-    "low": []
+    "low": [
+      "Cookies SameSite not set",
+      "Cookies Expires not set"
+    ]
   }
 }

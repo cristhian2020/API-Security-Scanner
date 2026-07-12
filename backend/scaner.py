@@ -273,12 +273,13 @@ ssl_prefer_server_ciphers on;""",
 class APIScanner:
     """Clase principal que ejecuta todos los escaneos usando VULNAPI"""
     
-    def __init__(self, url: str, deep_scan: bool = True, ssl_check: bool = True):
-        self.url = url
+    def __init__(self, target: str, deep_scan: bool = True, ssl_check: bool = True, scan_type: str = "url"):
+        self.target = target
         self.deep_scan = deep_scan
         self.ssl_check = ssl_check
+        self.scan_type = scan_type
         self.results = {
-            'url': url,
+            'url': target if scan_type == "url" else "Archivo OpenAPI",
             'timestamp': datetime.now().isoformat(),
             'vulnerabilities': [],
             'secure_count': 0,
@@ -301,25 +302,31 @@ class APIScanner:
         self.progress = 5
         
         # Construir comando
-        cmd = ["vulnapi", "scan", "curl", self.url]
-        if not self.ssl_check:
-            cmd.append("-k")
+        if self.scan_type == "openapi":
+            cmd = ["vulnapi", "scan", "openapi", self.target]
+        else:
+            cmd = ["vulnapi", "scan", "curl", self.target]
+            if not self.ssl_check:
+                cmd.append("-k")
             
         # Nombre de archivo de reporte temporal único
         os.makedirs("reports", exist_ok=True)
         temp_report = f"reports/temp_{uuid.uuid4()}.json"
+        # Deshabilitar telemetría para acelerar y evitar timeouts
+        cmd.append("--sqa-opt-out")
         cmd.extend(["--report-format", "json", "--report-file", temp_report])
         
         try:
             self.status_message = "Ejecutando escáner VULNAPI..."
             self.progress = 15
             
-            # Ejecutar subproceso de forma síncrona evitando deadlocks
+            # Ejecutar subproceso con timeout de 3 minutos
             subprocess.run(
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                shell=True
+                shell=True,
+                timeout=180
             )
             
             # Cargar y parsear resultados del archivo temporal
@@ -334,7 +341,7 @@ class APIScanner:
                     except Exception:
                         pass
             else:
-                raise Exception("El reporte JSON de VULNAPI no se generó. Es posible que la URL sea inaccesible o que el comando falle.")
+                raise Exception("El reporte JSON de VULNAPI no se generó. Es posible que la URL o archivo sean inaccesibles.")
                 
             # Procesar issues detectados
             issues = []
@@ -411,6 +418,18 @@ class APIScanner:
                     'link': link
                 })
                 
+            # Integrar ActiveFuzzer (SQLi y Rate Limiting) si deep_scan está habilitado y es una URL
+            if self.deep_scan and self.scan_type == "url":
+                self.status_message = "Ejecutando pruebas activas (Fuzzing y Rate Limit)..."
+                self.progress = 80
+                try:
+                    from backend.active_fuzzer import ActiveFuzzer
+                    fuzzer = ActiveFuzzer(self.target)
+                    active_vulns = fuzzer.run_all_tests()
+                    vulns.extend(active_vulns)
+                except Exception as e:
+                    print(f"Error al ejecutar fuzzer activo: {e}")
+
             self.results['vulnerabilities'] = vulns
             
             # Calcular estadísticas de severidades para Trends y UI
