@@ -145,12 +145,12 @@ export default function Scanner() {
                 className="accent-purple-500" />
               <span className="text-sm text-slate-300">Escanear URL</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+            {/* <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="mode" checked={scanMode === "openapi"}
                 onChange={() => setScanMode("openapi")}
                 className="accent-purple-500" />
               <span className="text-sm text-slate-300">Subir OpenAPI (Swagger)</span>
-            </label>
+            </label> */}
           </div>
 
           {/* URL Input */}

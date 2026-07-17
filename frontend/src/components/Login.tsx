@@ -29,7 +29,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <span className="text-6xl">🔒</span>
-          <h2 className="text-3xl font-bold text-white mt-4">Bienvenido de vuelta</h2>
+          <h2 className="text-3xl font-bold text-white mt-4">Bienvenido</h2>
           <p className="text-slate-400 mt-2">Inicia sesión para acceder a tus escaneos</p>
         </div>
 

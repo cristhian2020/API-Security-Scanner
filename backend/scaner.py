@@ -446,7 +446,8 @@ class APIScanner:
             }
             
             self.results['summary'] = summary
-            self.results['critical_count'] = critical + high
+            self.results['critical_count'] = critical
+            self.results['high_count'] = high
             self.results['medium_count'] = medium
             self.results['secure_count'] = low
             
@@ -481,6 +482,7 @@ class APIScanner:
                 'link': ''
             }]
             self.results['critical_count'] = 1
+            self.results['high_count'] = 0
             self.results['score'] = 'D'
             
         return self.results

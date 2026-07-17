@@ -126,8 +126,9 @@ async def get_history(authorization: str = Header(None)):
     
     # Añadir conteos para la tabla
     for scan in history:
-        scan['critical_count'] = scan.get('summary', {}).get('critical', 0)
-        scan['high_count'] = scan.get('summary', {}).get('high', 0)
+        summary = scan.get('summary', {}) or {}
+        scan['critical_count'] = len(summary.get('critical', []) or [])
+        scan['high_count'] = len(summary.get('high', []) or [])
         
     return JSONResponse(history)
 

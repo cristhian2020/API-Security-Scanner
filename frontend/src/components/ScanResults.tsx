@@ -35,6 +35,21 @@ export default function ScanResults({ results }: ScanResultsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const severityOrder: Record<string, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+    info: 4,
+  };
+
+  const orderedVulnerabilities = [...(results.vulnerabilities || [])].sort((a, b) => {
+    const aOrder = severityOrder[a.severity] ?? severityOrder.info;
+    const bOrder = severityOrder[b.severity] ?? severityOrder.info;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.title.localeCompare(b.title, 'es');
+  });
+
   const getSeverityBadge = (severity: string) => {
     const map: Record<string, { cls: string; label: string }> = {
       critical: { cls: "badge-critical", label: "CRÍTICO" },
@@ -71,7 +86,7 @@ export default function ScanResults({ results }: ScanResultsProps) {
         info:     { bg: '#eff6ff', text: '#2563eb', label: 'INFO' },
       };
 
-      const vulns = results.vulnerabilities || [];
+      const vulns = orderedVulnerabilities;
       const critCount = results.critical_count || 0;
       const highCount = results.summary?.high?.length || results.high_count || 0;
       const medCount = results.medium_count || 0;
@@ -311,14 +326,14 @@ export default function ScanResults({ results }: ScanResultsProps) {
         <div className="glass-card p-4 sm:p-8">
           <h3 className="text-xl font-bold text-white mb-6">Hallazgos Detallados</h3>
 
-          {(!results.vulnerabilities || results.vulnerabilities.length === 0) ? (
+          {orderedVulnerabilities.length === 0 ? (
             <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-xl">
               <h4 className="text-green-400 font-bold text-lg mb-1">✅ ¡No se encontraron vulnerabilidades!</h4>
               <p className="text-green-300/70 text-sm">Tu API tiene una configuración de seguridad excelente.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {results.vulnerabilities.map((vuln, i) => {
+              {orderedVulnerabilities.map((vuln, i) => {
                 const badge = getSeverityBadge(vuln.severity);
                 return (
                   <div key={i} className={`p-4 sm:p-6 rounded-xl bg-slate-800/50 severity-${vuln.severity}`}>
