@@ -1,0 +1,24 @@
+# Credenciales y secretos
+firebase-credentials.json
+.env
+frontend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node / Astro
+frontend/node_modules/
+frontend/dist/
+frontend/.astro/
+
+# Reportes y archivos temporales
+reports/
+uploads/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

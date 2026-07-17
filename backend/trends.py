@@ -14,8 +14,9 @@ from collections import Counter
 class TrendsDashboard:
     """Clase para análisis de tendencias de escaneos"""
     
-    def __init__(self, reports_dir: str = "reports"):
+    def __init__(self, reports_dir: str = "reports", user_id: str = None):
         self.reports_dir = reports_dir
+        self.user_id = user_id
         self.scans_data = []
         self._load_all_scans()
     
@@ -31,6 +32,10 @@ class TrendsDashboard:
                     filepath = os.path.join(self.reports_dir, filename)
                     with open(filepath, 'r', encoding='utf-8') as f:
                         data = json.load(f)
+                        
+                        if self.user_id and data.get('user_id') != self.user_id:
+                            continue
+                            
                         # Extraer metadatos del archivo
                         scan_id = filename.replace('.json', '')
                         data['scan_id'] = scan_id

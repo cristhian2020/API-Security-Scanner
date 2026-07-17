@@ -1,6 +1,0 @@
-POST /post HTTP/1.1
-Host: httpbin.org
-Content-Type: application/json
-User-Agent: Mozilla/5.0
-
-{"user":"test", "password":"12345"}

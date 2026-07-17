@@ -5,16 +5,16 @@ Interfaz REST para la herramienta
 """
 
 from backend.scaner import APIScanner
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Form, File, UploadFile
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from starlette.requests import Request
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Form, File, UploadFile, Header
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import uuid
 import os
 from datetime import datetime
 import sys
+import firebase_admin
+from firebase_admin import credentials, firestore, auth as firebase_auth
 sys.path.append('..')
 
 from backend.trends import TrendsDashboard
@@ -26,21 +26,25 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# --- CONFIGURACIÓN CORREGIDA ---
-# Obtener la ruta absoluta del directorio actual
+# --- CONFIGURACIÓN CORS ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4321", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- CONFIGURACIÓN FIREBASE ADMIN ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-
-# Crear directorios si no existen
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-# Configurar templates con la ruta correcta
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-# Montar archivos estáticos
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+try:
+    cred = credentials.Certificate(os.path.join(BASE_DIR, "..", "firebase-credentials.json"))
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    print("Firebase Admin inicializado correctamente.")
+except Exception as e:
+    print(f"Advertencia: No se pudo inicializar Firebase Admin. Asegúrate de tener firebase-credentials.json en la raíz. Error: {e}")
+    db = None
 
 # Asegurar que exista la carpeta de reportes
 os.makedirs("reports", exist_ok=True)
@@ -48,23 +52,35 @@ os.makedirs("reports", exist_ok=True)
 # Almacenamiento de escaneos (en memoria - para producción usar BD)
 scans = {}
 
-def run_scan_task(scan_id: str, target: str, deep_scan: bool, ssl_check: bool, scan_type: str = "url"):
+def run_scan_task(scan_id: str, target: str, deep_scan: bool, ssl_check: bool, scan_type: str = "url", user_id: str = None):
     """Ejecuta el escaneo en segundo plano"""
     try:
         scanner = APIScanner(target, deep_scan, ssl_check, scan_type=scan_type)
         results = scanner.scan_all()
         
-        # Guardar resultados
+        # Añadir metadatos
+        if user_id:
+            results['user_id'] = user_id
+            
+        # Guardar resultados en memoria
         scans[scan_id]['results'] = results
         scans[scan_id]['status'] = 'completed'
         scans[scan_id]['completed_at'] = datetime.now().isoformat()
         scans[scan_id]['progress'] = 100
         scans[scan_id]['message'] = 'Escaneo completado'
         
-        # Guardar en archivo
+        # Guardar en archivo local (backup)
         with open(f"reports/{scan_id}.json", "w") as f:
             json.dump(results, f, indent=2)
             
+        # Guardar en Firestore
+        if db:
+            try:
+                db.collection("reports").document(scan_id).set(results)
+                print(f"Reporte {scan_id} guardado en Firestore.")
+            except Exception as fb_err:
+                print(f"Error guardando en Firestore: {fb_err}")
+                
     except Exception as e:
         scans[scan_id]['status'] = 'failed'
         scans[scan_id]['message'] = f'Error: {str(e)}'
@@ -76,49 +92,76 @@ def run_scan_task(scan_id: str, target: str, deep_scan: bool, ssl_check: bool, s
             except:
                 pass
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Página principal"""
-    return templates.TemplateResponse(request=request, name="index.html")
+@app.get("/api/dashboard/full")
+async def get_full_dashboard(days: int = 30, authorization: str = Header(None)):
+    """Obtiene datos completos para el Dashboard (requiere auth)"""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ")[1]
+        try:
+            if firebase_admin.auth:
+                decoded_token = firebase_auth.verify_id_token(token)
+                user_id = decoded_token.get("uid")
+        except:
+            pass
+            
+    dashboard = TrendsDashboard(user_id=user_id)
+    return JSONResponse(dashboard.get_full_dashboard(days=days))
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    """Página del Dashboard"""
-    return templates.TemplateResponse(request=request, name="dashboard.html")
-
-@app.get("/history", response_class=HTMLResponse)
-async def history_page(request: Request):
-    """Página del Historial"""
-    return templates.TemplateResponse(request=request, name="history.html")
+@app.get("/api/history")
+async def get_history(authorization: str = Header(None)):
+    """Obtiene el historial de escaneos (requiere auth)"""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ")[1]
+        try:
+            if firebase_admin.auth:
+                decoded_token = firebase_auth.verify_id_token(token)
+                user_id = decoded_token.get("uid")
+        except:
+            pass
+            
+    dashboard = TrendsDashboard(user_id=user_id)
+    history = dashboard.scans_data
+    
+    # Añadir conteos para la tabla
+    for scan in history:
+        scan['critical_count'] = scan.get('summary', {}).get('critical', 0)
+        scan['high_count'] = scan.get('summary', {}).get('high', 0)
+        
+    return JSONResponse(history)
 
 @app.post("/api/scan")
 async def start_scan(
     background_tasks: BackgroundTasks,
     url: str = Form(...),
     deep_scan: bool = Form(True),
-    ssl_check: bool = Form(True)
+    ssl_check: bool = Form(True),
+    authorization: str = Header(None)
 ):
-    """Inicia un nuevo escaneo"""
-    # Validar URL
-    if not url.startswith('http://') and not url.startswith('https://'):
-        url = 'https://' + url
-    
+    """Inicia un escaneo de una API URL (requiere auth)"""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ")[1]
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+            user_id = decoded_token.get("uid")
+        except Exception as e:
+            print(f"Error de auth: {e}")
+            
     scan_id = str(uuid.uuid4())
-    
     scans[scan_id] = {
         'id': scan_id,
-        'url': url,
-        'status': 'running',
-        'progress': 0,
-        'message': 'Iniciando escaneo...',
+        'target': url,
+        'status': 'started',
         'started_at': datetime.now().isoformat(),
-        'completed_at': None,
-        'results': None,
-        'error': None
+        'progress': 0,
+        'message': 'Inicializando escáner',
+        'type': 'url',
+        'user_id': user_id
     }
     
-    # Ejecutar en segundo plano
-    background_tasks.add_task(run_scan_task, scan_id, url, deep_scan, ssl_check, "url")
+    background_tasks.add_task(run_scan_task, scan_id, url, deep_scan, ssl_check, "url", user_id)
     
     return JSONResponse({
         'scan_id': scan_id,
@@ -130,27 +173,40 @@ async def start_scan(
 async def start_scan_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    authorization: str = Header(None)
 ):
+    """Sube un archivo OpenAPI y comienza el escaneo (requiere auth)"""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split("Bearer ")[1]
+        try:
+            decoded_token = firebase_auth.verify_id_token(token)
+            user_id = decoded_token.get("uid")
+        except:
+            pass
+
     scan_id = str(uuid.uuid4())
+    
+    # Asegurar que uploads existe
     os.makedirs("uploads", exist_ok=True)
-    file_path = os.path.join("uploads", f"{scan_id}_{file.filename}")
-    with open(file_path, "wb") as buffer:
+    file_path = f"uploads/{scan_id}_{file.filename}"
+    
+    with open(file_path, "wb") as f:
         content = await file.read()
-        buffer.write(content)
+        f.write(content)
         
     scans[scan_id] = {
         'id': scan_id,
-        'url': f"Archivo OpenAPI: {file.filename}",
-        'status': 'running',
-        'progress': 0,
-        'message': 'Iniciando escaneo de OpenAPI...',
+        'target': file.filename,
+        'status': 'started',
         'started_at': datetime.now().isoformat(),
-        'completed_at': None,
-        'results': None,
-        'error': None
+        'progress': 0,
+        'message': 'Procesando archivo OpenAPI',
+        'type': 'openapi',
+        'user_id': user_id
     }
     
-    background_tasks.add_task(run_scan_task, scan_id, file_path, False, False, "openapi")
+    background_tasks.add_task(run_scan_task, scan_id, file_path, False, False, "openapi", user_id)
     
     return JSONResponse({
         'scan_id': scan_id,

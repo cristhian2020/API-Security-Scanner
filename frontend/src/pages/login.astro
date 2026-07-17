@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Login from '../components/Login.tsx';
+---
+
+<Layout title="Iniciar Sesión - API Security Scanner">
+	<div class="gradient-dark-bg min-h-screen relative">
+		<Login client:load />
+
+		<!-- Background Elements -->
+		<div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+			<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-[120px]"></div>
+			<div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px]"></div>
+		</div>
+	</div>
+</Layout>

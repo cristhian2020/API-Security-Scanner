@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.tsx';
+import HistoryView from '../components/HistoryView.tsx';
+---
+
+<Layout title="Historial - API Security Scanner">
+	<div class="gradient-dark-bg min-h-screen">
+		<Navbar client:load />
+		
+		<main class="px-6 py-12 relative z-10 fade-in">
+			<HistoryView client:load />
+		</main>
+
+		<!-- Background Elements -->
+		<div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+			<div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/20 blur-[120px]"></div>
+			<div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px]"></div>
+		</div>
+	</div>
+</Layout>
