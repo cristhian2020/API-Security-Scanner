@@ -5,30 +5,7 @@ import type { User } from "firebase/auth";
 
 const API_BASE = "http://localhost:8000";
 
-interface Vulnerability {
-  title: string;
-  severity: string;
-  description: string;
-  impact: string;
-  recommendation: string;
-  code_example?: string;
-  link?: string;
-}
-
-interface ScanResult {
-  score: string;
-  vulnerabilities: Vulnerability[];
-  critical_count: number;
-  high_count?: number;
-  medium_count: number;
-  secure_count: number;
-  summary: {
-    critical: string[];
-    high: string[];
-    medium: string[];
-    low: string[];
-  };
-}
+import ScanResults, { type ScanResult } from "./ScanResults";
 
 export default function Scanner() {
   const [user, setUser] = useState<User | null>(null);
@@ -242,92 +219,7 @@ export default function Scanner() {
 
       {/* Results */}
       {results && (
-        <div className="space-y-6 fade-in">
-          {/* Score */}
-          <div className="glass-card p-8 flex items-center justify-between">
-            <div>
-              <h3 className="text-2xl font-bold text-white">Puntuación de Seguridad</h3>
-              <p className="text-slate-400 text-sm">Basado en estándares CVSS y OWASP API Security Top 10</p>
-            </div>
-            <div className={`text-6xl font-extrabold score-${results.score.replace("+", "plus")}`}>
-              {results.score}
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-card p-5 border-l-4 border-red-500">
-              <div className="text-red-400 text-xs font-semibold mb-1">Críticas</div>
-              <div className="text-3xl font-bold text-white">{results.critical_count}</div>
-            </div>
-            <div className="glass-card p-5 border-l-4 border-orange-500">
-              <div className="text-orange-400 text-xs font-semibold mb-1">Altas</div>
-              <div className="text-3xl font-bold text-white">{results.summary.high?.length || 0}</div>
-            </div>
-            <div className="glass-card p-5 border-l-4 border-yellow-500">
-              <div className="text-yellow-400 text-xs font-semibold mb-1">Medias</div>
-              <div className="text-3xl font-bold text-white">{results.medium_count}</div>
-            </div>
-            <div className="glass-card p-5 border-l-4 border-green-500">
-              <div className="text-green-400 text-xs font-semibold mb-1">Seguras</div>
-              <div className="text-3xl font-bold text-white">{results.secure_count}</div>
-            </div>
-          </div>
-
-          {/* Vulnerability List */}
-          <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-white mb-6">Hallazgos Detallados</h3>
-
-            {results.vulnerabilities.length === 0 ? (
-              <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-xl">
-                <h4 className="text-green-400 font-bold text-lg mb-1">✅ ¡No se encontraron vulnerabilidades!</h4>
-                <p className="text-green-300/70 text-sm">Tu API tiene una configuración de seguridad excelente.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {results.vulnerabilities.map((vuln, i) => {
-                  const badge = getSeverityBadge(vuln.severity);
-                  return (
-                    <div key={i} className={`p-6 rounded-xl bg-slate-800/50 severity-${vuln.severity}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-bold text-white">{vuln.title}</h4>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.cls}`}>{badge.label}</span>
-                      </div>
-                      <p className="text-slate-400 text-sm mb-4">{vuln.description}</p>
-
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                          <h5 className="text-xs font-bold text-red-400 mb-1">💥 Impacto</h5>
-                          <p className="text-xs text-slate-400">{vuln.impact}</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                          <h5 className="text-xs font-bold text-green-400 mb-1">📝 Recomendación</h5>
-                          <p className="text-xs text-slate-400">{vuln.recommendation}</p>
-                        </div>
-                      </div>
-
-                      {vuln.code_example && (
-                        <div className="mt-3">
-                          <h5 className="text-xs font-semibold text-slate-400 mb-2">Ejemplo de solución:</h5>
-                          <div className="code-block text-xs">{vuln.code_example}</div>
-                        </div>
-                      )}
-
-                      {vuln.link && (
-                        <div className="mt-3 text-right">
-                          <a href={vuln.link} target="_blank" rel="noopener noreferrer"
-                            className="text-purple-400 hover:text-purple-300 text-xs font-medium transition-colors">
-                            💡 Ver cómo solucionarlo →
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        <ScanResults results={results} />
       )}
     </div>
   );
