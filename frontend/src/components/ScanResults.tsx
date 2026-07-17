@@ -47,11 +47,10 @@ export default function ScanResults({ results }: ScanResultsProps) {
   };
 
   const handleDownloadPDF = async () => {
-    if (!containerRef.current || isGenerating) return;
+    if (isGenerating) return;
     setIsGenerating(true);
 
     try {
-      // Crear una ventana nueva con el contenido para imprimir como PDF
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         alert("Por favor permite las ventanas emergentes para descargar el PDF.");
@@ -59,87 +58,185 @@ export default function ScanResults({ results }: ScanResultsProps) {
         return;
       }
 
-      const content = containerRef.current.innerHTML;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      const scoreColors: Record<string, string> = { 'A+': '#22c55e', 'A': '#4ade80', 'B': '#facc15', 'C': '#fb923c', 'D': '#ef4444' };
+      const scoreColor = scoreColors[results.score] || '#94a3b8';
+      const sevColors: Record<string, {bg: string, text: string, label: string}> = {
+        critical: { bg: '#fef2f2', text: '#dc2626', label: 'CRÍTICO' },
+        high:     { bg: '#fff7ed', text: '#ea580c', label: 'ALTO' },
+        medium:   { bg: '#fefce8', text: '#ca8a04', label: 'MEDIO' },
+        low:      { bg: '#f0fdf4', text: '#16a34a', label: 'BAJO' },
+        info:     { bg: '#eff6ff', text: '#2563eb', label: 'INFO' },
+      };
 
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Reporte de Seguridad - ${results.url || 'API'}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; }
-            .space-y-6 > * + * { margin-top: 1.5rem; }
-            .space-y-4 > * + * { margin-top: 1rem; }
-            .glass-card { background: rgba(30,41,59,0.7); border: 1px solid rgba(71,85,105,0.4); border-radius: 12px; }
-            .p-8 { padding: 2rem; }
-            .p-5 { padding: 1.25rem; }
-            .p-6 { padding: 1.5rem; }
-            .p-3 { padding: 0.75rem; }
-            .mb-1 { margin-bottom: 0.25rem; }
-            .mb-3 { margin-bottom: 0.75rem; }
-            .mb-4 { margin-bottom: 1rem; }
-            .mb-6 { margin-bottom: 1.5rem; }
-            .mt-3 { margin-top: 0.75rem; }
-            .text-white { color: white; }
-            .text-2xl { font-size: 1.5rem; }
-            .text-xl { font-size: 1.25rem; }
-            .text-3xl { font-size: 1.875rem; }
-            .text-6xl { font-size: 3.75rem; }
-            .text-xs { font-size: 0.75rem; }
-            .text-sm { font-size: 0.875rem; }
-            .font-bold { font-weight: 700; }
-            .font-extrabold { font-weight: 800; }
-            .font-semibold { font-weight: 600; }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            .rounded-xl { border-radius: 0.75rem; }
-            .rounded-lg { border-radius: 0.5rem; }
-            .rounded-full { border-radius: 9999px; }
-            .text-slate-300 { color: #cbd5e1; }
-            .text-slate-400 { color: #94a3b8; }
-            .text-red-400 { color: #f87171; }
-            .text-orange-400 { color: #fb923c; }
-            .text-yellow-400 { color: #facc15; }
-            .text-green-400 { color: #4ade80; }
-            .text-purple-400 { color: #c084fc; }
-            .border-l-4 { border-left: 4px solid; }
-            .border-red-500 { border-color: #ef4444; }
-            .border-orange-500 { border-color: #f97316; }
-            .border-yellow-500 { border-color: #eab308; }
-            .border-green-500 { border-color: #22c55e; }
-            .grid { display: grid; gap: 1rem; }
-            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-            .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-            .flex { display: flex; }
-            .items-center { align-items: center; }
-            .justify-between { justify-content: space-between; }
-            .gap-3 { gap: 0.75rem; }
-            .score-A, .score-Aplus { color: #4ade80; }
-            .score-B { color: #facc15; }
-            .score-C { color: #fb923c; }
-            .score-D { color: #f87171; }
-            .badge-critical { background: rgba(239,68,68,0.15); color: #f87171; padding: 4px 12px; border-radius: 9999px; }
-            .badge-high { background: rgba(249,115,22,0.15); color: #fb923c; padding: 4px 12px; border-radius: 9999px; }
-            .badge-medium { background: rgba(234,179,8,0.15); color: #facc15; padding: 4px 12px; border-radius: 9999px; }
-            .badge-low { background: rgba(34,197,94,0.15); color: #4ade80; padding: 4px 12px; border-radius: 9999px; }
-            .badge-info { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 4px 12px; border-radius: 9999px; }
-            .code-block { background: #1e293b; padding: 12px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
-            .bg-slate-800\\/50 { background: rgba(30,41,59,0.5); }
-            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-          </style>
-        </head>
-        <body>${content}</body>
-        </html>
-      `);
+      const vulns = results.vulnerabilities || [];
+      const critCount = results.critical_count || 0;
+      const highCount = results.summary?.high?.length || results.high_count || 0;
+      const medCount = results.medium_count || 0;
+      const secCount = results.secure_count || 0;
+      const totalVulns = vulns.filter(v => v.severity !== 'info').length;
+
+      // Generar filas de vulnerabilidades
+      const vulnRows = vulns.map((v, i) => {
+        const sev = sevColors[v.severity] || sevColors.info;
+        return `
+          <div class="finding" style="page-break-inside: avoid;">
+            <div class="finding-header">
+              <div class="finding-number">#${i + 1}</div>
+              <div class="finding-title">${v.title}</div>
+              <div class="severity-badge" style="background:${sev.bg}; color:${sev.text};">${sev.label}</div>
+            </div>
+            <p class="finding-desc">${v.description}</p>
+            <div class="finding-details">
+              <div class="detail-box impact">
+                <div class="detail-label">💥 Impacto</div>
+                <p>${v.impact}</p>
+              </div>
+              <div class="detail-box recommendation">
+                <div class="detail-label">📝 Recomendación</div>
+                <p>${v.recommendation}</p>
+              </div>
+            </div>
+            ${v.code_example ? `
+              <div class="code-section">
+                <div class="detail-label">Ejemplo de solución</div>
+                <pre>${v.code_example}</pre>
+              </div>
+            ` : ''}
+            ${v.link ? `<div class="ref-link"><a href="${v.link}" target="_blank">🔗 Referencia OWASP</a></div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      printWindow.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Seguridad API - ${results.url || 'API'}</title>
+  <style>
+    @page { size: letter; margin: 1.5cm 2cm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #1e293b; line-height: 1.6; background: #fff; }
+    
+    /* HEADER */
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #7c3aed; padding-bottom: 20px; margin-bottom: 30px; }
+    .header-left h1 { font-size: 22px; color: #7c3aed; margin-bottom: 4px; }
+    .header-left p { font-size: 11px; color: #64748b; }
+    .header-right { text-align: right; font-size: 11px; color: #64748b; line-height: 1.8; }
+    
+    /* SCORE */
+    .score-section { text-align: center; margin: 30px 0; padding: 25px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; border: 1px solid #e2e8f0; }
+    .score-label { font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .score-value { font-size: 72px; font-weight: 800; color: ${scoreColor}; line-height: 1; }
+    .score-url { font-size: 12px; color: #94a3b8; margin-top: 8px; word-break: break-all; }
+    
+    /* SUMMARY TABLE */
+    .summary-section { margin: 30px 0; }
+    .summary-section h2 { font-size: 16px; color: #1e293b; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .summary-card { padding: 16px; border-radius: 8px; text-align: center; }
+    .summary-card.critical { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .summary-card.high { background: #fff7ed; border-left: 4px solid #f97316; }
+    .summary-card.medium { background: #fefce8; border-left: 4px solid #eab308; }
+    .summary-card.secure { background: #f0fdf4; border-left: 4px solid #22c55e; }
+    .summary-card .count { font-size: 28px; font-weight: 800; }
+    .summary-card.critical .count { color: #dc2626; }
+    .summary-card.high .count { color: #ea580c; }
+    .summary-card.medium .count { color: #ca8a04; }
+    .summary-card.secure .count { color: #16a34a; }
+    .summary-card .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+    /* FINDINGS */
+    .findings-section { margin-top: 30px; }
+    .findings-section h2 { font-size: 16px; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+    .finding { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .finding-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .finding-number { background: #7c3aed; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .finding-title { font-size: 14px; font-weight: 700; color: #0f172a; flex: 1; }
+    .severity-badge { padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; flex-shrink: 0; }
+    .finding-desc { font-size: 12px; color: #475569; margin-bottom: 12px; }
+    .finding-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .detail-box { padding: 12px; border-radius: 6px; font-size: 11px; color: #334155; }
+    .detail-box.impact { background: #fef2f2; border: 1px solid #fecaca; }
+    .detail-box.recommendation { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .detail-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; color: #64748b; }
+    .code-section { margin-top: 10px; }
+    .code-section pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-size: 10px; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+    .ref-link { margin-top: 8px; text-align: right; }
+    .ref-link a { color: #7c3aed; font-size: 11px; text-decoration: none; }
+    
+    /* FOOTER */
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 2px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+    
+    /* NO VULNS */
+    .no-vulns { text-align: center; padding: 30px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
+    .no-vulns h3 { color: #16a34a; font-size: 16px; }
+    .no-vulns p { color: #64748b; font-size: 12px; margin-top: 4px; }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .finding { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>🛡️ API Security Scanner</h1>
+      <p>Reporte de Análisis de Vulnerabilidades</p>
+    </div>
+    <div class="header-right">
+      <div><strong>Fecha:</strong> ${dateStr}</div>
+      <div><strong>Hora:</strong> ${timeStr}</div>
+      <div><strong>Vulnerabilidades:</strong> ${totalVulns} encontradas</div>
+    </div>
+  </div>
+
+  <!-- SCORE -->
+  <div class="score-section">
+    <div class="score-label">Puntuación de Seguridad</div>
+    <div class="score-value">${results.score || 'N/A'}</div>
+    <div class="score-url">${results.url || 'URL no especificada'}</div>
+  </div>
+
+  <!-- RESUMEN -->
+  <div class="summary-section">
+    <h2>Resumen Ejecutivo</h2>
+    <div class="summary-grid">
+      <div class="summary-card critical"><div class="count">${critCount}</div><div class="label">Críticas</div></div>
+      <div class="summary-card high"><div class="count">${highCount}</div><div class="label">Altas</div></div>
+      <div class="summary-card medium"><div class="count">${medCount}</div><div class="label">Medias</div></div>
+      <div class="summary-card secure"><div class="count">${secCount}</div><div class="label">Seguras</div></div>
+    </div>
+  </div>
+
+  <!-- HALLAZGOS -->
+  <div class="findings-section">
+    <h2>Hallazgos Detallados</h2>
+    ${vulns.length === 0 ? `
+      <div class="no-vulns">
+        <h3>✅ No se encontraron vulnerabilidades</h3>
+        <p>La API analizada presenta una configuración de seguridad sólida.</p>
+      </div>
+    ` : vulnRows}
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>Generado por API Security Scanner — Basado en OWASP API Security Top 10</span>
+    <span>Reporte confidencial — ${dateStr}</span>
+  </div>
+</body>
+</html>`);
       printWindow.document.close();
       
-      // Esperar a que cargue y luego imprimir
       printWindow.onload = () => {
         printWindow.print();
         printWindow.onafterprint = () => printWindow.close();
       };
-      // Fallback si onload no se dispara
       setTimeout(() => {
         try { printWindow.print(); } catch(e) {}
       }, 1000);
