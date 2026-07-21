@@ -57,7 +57,7 @@ export default function ScanResults({ results }: ScanResultsProps) {
     { name: 'Bajas/Info', value: results.summary?.low?.length || 0, color: '#3b82f6' },
   ].filter(item => item.value > 0);
   if (chartData.length === 0 && results.secure_count > 0) {
-    chartData.push({ name: 'Seguras', value: results.secure_count, color: '#22c55e' });
+    chartData.push({ name: 'Bajas', value: results.secure_count, color: '#22c55e' });
   }
 
   const severityOrder: Record<string, number> = {
@@ -253,7 +253,7 @@ export default function ScanResults({ results }: ScanResultsProps) {
       <div class="summary-card critical"><div class="count">${critCount}</div><div class="label">Críticas</div></div>
       <div class="summary-card high"><div class="count">${highCount}</div><div class="label">Altas</div></div>
       <div class="summary-card medium"><div class="count">${medCount}</div><div class="label">Medias</div></div>
-      <div class="summary-card secure"><div class="count">${secCount}</div><div class="label">Seguras</div></div>
+      <div class="summary-card secure"><div class="count">${secCount}</div><div class="label">Bajas</div></div>
     </div>
   </div>
 
@@ -396,7 +396,7 @@ export default function ScanResults({ results }: ScanResultsProps) {
             <div className="text-3xl font-bold text-white">{results.medium_count || 0}</div>
           </div>
           <div className="glass-card p-5 border-l-4 border-green-500">
-            <div className="text-green-400 text-xs font-semibold mb-1">Seguras</div>
+            <div className="text-green-400 text-xs font-semibold mb-1">Bajas</div>
             <div className="text-3xl font-bold text-white">{results.secure_count || 0}</div>
           </div>
         </div>

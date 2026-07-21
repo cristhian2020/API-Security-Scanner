@@ -53,7 +53,7 @@ def main():
         print(f"📊 Puntuación: {results['score']}")
         print(f"🔴 Críticas: {results['critical_count']}")
         print(f"🟡 Medias: {results['medium_count']}")
-        print(f"🟢 Seguras: {results['secure_count']}")
+        print(f"🟢 Bjas: {results['secure_count']}")
         print("-"*70)
         print("📋 DETALLE DE VULNERABILIDADES:")
         print("-"*70)
