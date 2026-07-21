@@ -9,6 +9,7 @@ import ScanResults, { type ScanResult } from "./ScanResults";
 
 export default function Scanner() {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [scanMode, setScanMode] = useState<"url" | "openapi">("url");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -24,6 +25,7 @@ export default function Scanner() {
   useEffect(() => {
     const unsub = onAuthChange((u) => {
       setUser(u);
+      setAuthLoading(false);
       if (!u) window.location.href = "/login";
     });
     return () => unsub();
@@ -130,6 +132,15 @@ export default function Scanner() {
     };
     return map[severity] || map.info;
   };
+
+  if (authLoading) {
+    return (
+      <div className="max-w-5xl mx-auto flex flex-col items-center justify-center py-20">
+        <div className="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full mb-4" />
+        <p className="text-slate-400 text-sm">Cargando...</p>
+      </div>
+    );
+  }
 
   if (!user) return null;
 

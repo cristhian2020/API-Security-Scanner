@@ -283,6 +283,7 @@ class APIScanner:
             'url': target if scan_type == "url" else "Archivo OpenAPI",
             'timestamp': datetime.now().isoformat(),
             'vulnerabilities': [],
+            'total_vulnerabilities': 0,
             'secure_count': 0,
             'medium_count': 0,
             'critical_count': 0,
@@ -436,6 +437,7 @@ class APIScanner:
                     print(f"Error al ejecutar fuzzer activo: {e}")
 
             self.results['vulnerabilities'] = vulns
+            self.results['total_vulnerabilities'] = len(vulns)
             
             # Calcular estadísticas de severidades para Trends y UI
             critical = sum(1 for v in vulns if v['severity'] == 'critical')
@@ -488,6 +490,7 @@ class APIScanner:
             }]
             self.results['critical_count'] = 1
             self.results['high_count'] = 0
+            self.results['total_vulnerabilities'] = 1
             self.results['score'] = 'D'
             
         return self.results

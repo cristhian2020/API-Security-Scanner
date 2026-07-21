@@ -17,6 +17,7 @@ export interface ScanResult {
   url?: string;
   score: string;
   vulnerabilities: Vulnerability[];
+  total_vulnerabilities?: number;
   critical_count: number;
   high_count?: number;
   medium_count: number;
@@ -74,6 +75,10 @@ export default function ScanResults({ results }: ScanResultsProps) {
     return a.title.localeCompare(b.title, 'es');
   });
 
+  const actionableVulnerabilities = orderedVulnerabilities.filter(v => v.severity !== 'info');
+  const informationalVulnerabilities = orderedVulnerabilities.filter(v => v.severity === 'info');
+  const totalVulns = results.total_vulnerabilities ?? orderedVulnerabilities.length;
+
   const getSeverityBadge = (severity: string) => {
     const map: Record<string, { cls: string; label: string }> = {
       critical: { cls: "badge-critical", label: "CRÍTICO" },
@@ -110,12 +115,12 @@ export default function ScanResults({ results }: ScanResultsProps) {
         info:     { bg: '#eff6ff', text: '#2563eb', label: 'INFO' },
       };
 
-      const vulns = orderedVulnerabilities;
+      const vulns = actionableVulnerabilities;
       const critCount = results.critical_count || 0;
       const highCount = results.summary?.high?.length || results.high_count || 0;
       const medCount = results.medium_count || 0;
       const secCount = results.secure_count || 0;
-      const totalVulns = vulns.filter(v => v.severity !== 'info').length;
+      const totalVulns = results.total_vulnerabilities ?? vulns.length;
 
       // Generar filas de vulnerabilidades
       const vulnRows = vulns.map((v, i) => {
@@ -372,7 +377,12 @@ export default function ScanResults({ results }: ScanResultsProps) {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="glass-card p-5 border-l-4 border-purple-500">
+            <div className="text-purple-400 text-xs font-semibold mb-1">Total</div>
+            <div className="text-3xl font-bold text-white">{totalVulns}</div>
+            <div className="text-slate-400 text-sm mt-1">{actionableVulnerabilities.length} accionables · {informationalVulnerabilities.length} info</div>
+          </div>
           <div className="glass-card p-5 border-l-4 border-red-500">
             <div className="text-red-400 text-xs font-semibold mb-1">Críticas</div>
             <div className="text-3xl font-bold text-white">{results.critical_count || 0}</div>
