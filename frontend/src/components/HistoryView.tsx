@@ -15,7 +15,7 @@ export default function HistoryView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [scoreFilter, setScoreFilter] = useState("ALL");
 
-  // Modal State
+  // Vista de detalle inline (reemplaza la tabla, sin modal)
   const [selectedScan, setSelectedScan] = useState<ScanResult | null>(null);
 
   useEffect(() => {
@@ -47,6 +47,15 @@ export default function HistoryView() {
     setLoading(false);
   };
 
+  const handleViewDetails = (scan: ScanResult) => {
+    setSelectedScan(scan);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleBackToHistory = () => {
+    setSelectedScan(null);
+  };
+
   // Filtrado de historial
   const filteredHistory = history.filter((scan) => {
     const matchesSearch = (scan.url || "").toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,29 +65,30 @@ export default function HistoryView() {
 
   if (!user) return null;
 
+  // ── Vista de Detalle Inline ──
+  if (selectedScan) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        {/* Botón Volver */}
+        <button
+          onClick={handleBackToHistory}
+          className="mb-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-slate-300 hover:text-white transition-all text-sm font-medium"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Volver al Historial
+        </button>
+
+        {/* Resultados del escaneo directamente en la página */}
+        <ScanResults results={selectedScan} />
+      </div>
+    );
+  }
+
+  // ── Vista de Tabla (Historial) ──
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Modal de Detalles */}
-      {selectedScan && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm overflow-y-auto">
-          <div className="min-h-screen py-8 px-4">
-            <div className="max-w-5xl mx-auto">
-              <div className="flex justify-end mb-4">
-                <button 
-                  onClick={() => setSelectedScan(null)}
-                  className="text-white hover:text-red-400 font-bold text-lg bg-slate-800 hover:bg-slate-700 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 sm:p-6">
-                <ScanResults results={selectedScan} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="glass-card p-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <h2 className="text-2xl font-bold text-white">📋 Historial de Escaneos</h2>
@@ -159,7 +169,7 @@ export default function HistoryView() {
                     <td className="p-4 text-center font-bold text-red-400">{scan.critical_count || 0}</td>
                     <td className="p-4 text-center space-x-2">
                       <button 
-                        onClick={() => setSelectedScan(scan)}
+                        onClick={() => handleViewDetails(scan)}
                         className="text-white hover:text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-md transition-colors text-xs font-bold shadow-lg"
                       >
                         👁️ Ver Detalles
