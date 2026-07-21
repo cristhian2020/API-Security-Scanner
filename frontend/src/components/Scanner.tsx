@@ -206,7 +206,7 @@ export default function Scanner() {
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
                     className="input-dark text-xs py-2"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">Si la API requiere autenticación, ingresa el token aquí para escanear vulnerabilidades en JWT.</p>
+                  <p className="text-[15px] text-slate-500 mt-1">Si la API requiere autenticación, ingresa el token aquí para escanear vulnerabilidades en JWT.</p>
                 </div>
               </div>
             </details>

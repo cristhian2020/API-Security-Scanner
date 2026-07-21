@@ -1,5 +1,7 @@
-// src/components/ScanResults.tsx
 import { useRef, useState } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export interface Vulnerability {
   title: string;
@@ -34,6 +36,28 @@ interface ScanResultsProps {
 export default function ScanResults({ results }: ScanResultsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [filter, setFilter] = useState<string>("all");
+  const [expandedIndices, setExpandedIndices] = useState<Record<number, boolean>>({});
+
+  const toggleExpand = (index: number) => {
+    setExpandedIndices(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+  };
+
+  const highCount = results.summary?.high?.length || results.high_count || 0;
+  
+  const chartData = [
+    { name: 'Críticas', value: results.critical_count || 0, color: '#ef4444' },
+    { name: 'Altas', value: highCount, color: '#f97316' },
+    { name: 'Medias', value: results.medium_count || 0, color: '#eab308' },
+    { name: 'Bajas/Info', value: results.summary?.low?.length || 0, color: '#3b82f6' },
+  ].filter(item => item.value > 0);
+  if (chartData.length === 0 && results.secure_count > 0) {
+    chartData.push({ name: 'Seguras', value: results.secure_count, color: '#22c55e' });
+  }
 
   const severityOrder: Record<string, number> = {
     critical: 0,
@@ -307,14 +331,43 @@ export default function ScanResults({ results }: ScanResultsProps) {
           </div>
         )}
 
-        {/* Score */}
-        <div className="glass-card p-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-2xl font-bold text-white">Puntuación de Seguridad</h3>
-            <p className="text-slate-400 text-sm">Basado en estándares CVSS y OWASP API Security Top 10</p>
+        {/* Score and Chart */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="glass-card p-8 flex flex-col sm:flex-row items-center justify-between gap-4 md:col-span-2">
+            <div>
+              <h3 className="text-2xl font-bold text-white">Puntuación de Seguridad</h3>
+              <p className="text-slate-400 text-sm">Basado en estándares CVSS y OWASP API Security Top 10</p>
+            </div>
+            <div className={`text-6xl font-extrabold score-${(results.score || "N/A").replace("+", "plus")}`}>
+              {results.score || "N/A"}
+            </div>
           </div>
-          <div className={`text-6xl font-extrabold score-${(results.score || "N/A").replace("+", "plus")}`}>
-            {results.score || "N/A"}
+          
+          <div className="glass-card p-4 flex items-center justify-center min-h-[160px]">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-slate-400 text-sm">Sin datos para graficar</div>
+            )}
           </div>
         </div>
 
@@ -340,7 +393,16 @@ export default function ScanResults({ results }: ScanResultsProps) {
 
         {/* Vulnerability List */}
         <div className="glass-card p-4 sm:p-8">
-          <h3 className="text-xl font-bold text-white mb-6">Hallazgos Detallados</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+            <h3 className="text-xl font-bold text-white">Hallazgos Detallados</h3>
+            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+              <button onClick={() => setFilter("all")} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors whitespace-nowrap ${filter === "all" ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>Todos</button>
+              <button onClick={() => setFilter("critical")} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors whitespace-nowrap ${filter === "critical" ? "bg-red-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>Críticos ({results.critical_count || 0})</button>
+              <button onClick={() => setFilter("high")} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors whitespace-nowrap ${filter === "high" ? "bg-orange-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>Altos ({results.summary?.high?.length || results.high_count || 0})</button>
+              <button onClick={() => setFilter("medium")} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors whitespace-nowrap ${filter === "medium" ? "bg-yellow-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>Medios ({results.medium_count || 0})</button>
+              <button onClick={() => setFilter("low")} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors whitespace-nowrap ${filter === "low" ? "bg-green-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}>Bajos ({results.summary?.low?.length || 0})</button>
+            </div>
+          </div>
 
           {orderedVulnerabilities.length === 0 ? (
             <div className="bg-green-500/10 border border-green-500/30 p-6 rounded-xl">
@@ -349,45 +411,81 @@ export default function ScanResults({ results }: ScanResultsProps) {
             </div>
           ) : (
             <div className="space-y-4">
-              {orderedVulnerabilities.map((vuln, i) => {
-                const badge = getSeverityBadge(vuln.severity);
-                return (
-                  <div key={i} className={`p-4 sm:p-6 rounded-xl bg-slate-800/50 severity-${vuln.severity}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
-                      <h4 className="font-bold text-white text-sm sm:text-base">{vuln.title}</h4>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.cls} whitespace-nowrap self-start`}>{badge.label}</span>
+              {orderedVulnerabilities.filter(v => filter === "all" || v.severity === filter).length === 0 ? (
+                <p className="text-slate-400 text-center py-4">No hay hallazgos para este filtro.</p>
+              ) : (
+                orderedVulnerabilities.filter(v => filter === "all" || v.severity === filter).map((vuln, i) => {
+                  const badge = getSeverityBadge(vuln.severity);
+                  const isExpanded = !!expandedIndices[i];
+                  return (
+                    <div key={i} className={`rounded-xl bg-slate-800/50 severity-${vuln.severity} transition-all duration-300 overflow-hidden`}>
+                      <div 
+                        className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer hover:bg-slate-700/30 transition-colors"
+                        onClick={() => toggleExpand(i)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${badge.cls} whitespace-nowrap`}>{badge.label}</span>
+                          <h4 className="font-bold text-white text-sm sm:text-base">{vuln.title}</h4>
+                        </div>
+                        <div className="text-slate-400">
+                          {isExpanded ? "▲" : "▼"}
+                        </div>
+                      </div>
+                      
+                      {isExpanded && (
+                        <div className="px-4 pb-4 sm:px-6 sm:pb-6 pt-0 border-t border-slate-700/50 mt-2 pt-4">
+                          <p className="text-slate-400 text-sm mb-4">{vuln.description}</p>
+
+                          <div className="grid md:grid-cols-2 gap-3">
+                            <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                              <h5 className="text-xs font-bold text-red-400 mb-1">💥 Impacto</h5>
+                              <p className="text-xs text-slate-400">{vuln.impact}</p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                              <h5 className="text-xs font-bold text-green-400 mb-1">📝 Recomendación</h5>
+                              <p className="text-xs text-slate-400">{vuln.recommendation}</p>
+                            </div>
+                          </div>
+
+                          {vuln.code_example && (
+                            <div className="mt-4 relative group">
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="text-xs font-semibold text-slate-400">Ejemplo de solución:</h5>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleCopyCode(vuln.code_example!); }}
+                                  className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded transition-colors"
+                                >
+                                  📋 Copiar
+                                </button>
+                              </div>
+                              <div className="code-block text-xs overflow-x-auto mt-2 rounded-xl overflow-hidden border border-slate-700/50">
+                                <SyntaxHighlighter 
+                                  language="python" 
+                                  style={vscDarkPlus}
+                                  customStyle={{ margin: 0, background: '#1e293b', padding: '1rem' }}
+                                >
+                                  {vuln.code_example}
+                                </SyntaxHighlighter>
+                              </div>
+                            </div>
+                          )}
+
+                          {vuln.link && (
+                            <div className="mt-4 text-right">
+                              <a href={vuln.link} target="_blank" rel="noopener noreferrer"
+                                className="text-purple-400 hover:text-purple-300 text-xs font-medium transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                💡 Ver cómo solucionarlo →
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-slate-400 text-sm mb-4">{vuln.description}</p>
-
-                    <div className="grid md:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-                        <h5 className="text-xs font-bold text-red-400 mb-1">💥 Impacto</h5>
-                        <p className="text-xs text-slate-400">{vuln.impact}</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                        <h5 className="text-xs font-bold text-green-400 mb-1">📝 Recomendación</h5>
-                        <p className="text-xs text-slate-400">{vuln.recommendation}</p>
-                      </div>
-                    </div>
-
-                    {vuln.code_example && (
-                      <div className="mt-3">
-                        <h5 className="text-xs font-semibold text-slate-400 mb-2">Ejemplo de solución:</h5>
-                        <div className="code-block text-xs overflow-x-auto">{vuln.code_example}</div>
-                      </div>
-                    )}
-
-                    {vuln.link && (
-                      <div className="mt-3 text-right">
-                        <a href={vuln.link} target="_blank" rel="noopener noreferrer"
-                          className="text-purple-400 hover:text-purple-300 text-xs font-medium transition-colors">
-                          💡 Ver cómo solucionarlo →
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           )}
         </div>

@@ -1,24 +1,35 @@
 // src/components/DashboardView.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { onAuthChange } from "../lib/auth";
 import type { User } from "firebase/auth";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
 
 const API_BASE = "http://localhost:8000";
-
-// Importar Chart.js dinámicamente
-let Chart: any;
 
 export default function DashboardView() {
   const [user, setUser] = useState<User | null>(null);
   const [data, setData] = useState<any>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
-  const trendChartRef = useRef<HTMLCanvasElement>(null);
-  const distChartRef = useRef<HTMLCanvasElement>(null);
-  const trendInstance = useRef<any>(null);
-  const distInstance = useRef<any>(null);
+  const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({});
+  const [hiddenSlices, setHiddenSlices] = useState<Record<string, boolean>>({});
 
-  const [chartLoaded, setChartLoaded] = useState(false);
+  const handleLegendClick = (e: any) => {
+    const dataKey = e.dataKey;
+    if (dataKey) {
+      setHiddenLines(prev => ({ ...prev, [dataKey]: !prev[dataKey] }));
+    }
+  };
+
+  const handlePieLegendClick = (e: any) => {
+    const name = e.value;
+    if (name) {
+      setHiddenSlices(prev => ({ ...prev, [name]: !prev[name] }));
+    }
+  };
 
   useEffect(() => {
     const unsub = onAuthChange((u) => {
@@ -28,39 +39,11 @@ export default function DashboardView() {
     return () => unsub();
   }, []);
 
-  // 1. Cargar Chart.js una sola vez al montar
-  useEffect(() => {
-    if (typeof window !== "undefined" && !Chart) {
-      import("https://cdn.jsdelivr.net/npm/chart.js@4.4.7/+esm" as any).then((mod) => {
-        Chart = mod.Chart;
-        const { CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Filler, Legend, Tooltip, LineController, DoughnutController } = mod;
-        Chart.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Filler, Legend, Tooltip, LineController, DoughnutController);
-        setChartLoaded(true);
-      }).catch(() => {
-        console.error("No se pudo cargar Chart.js");
-      });
-    } else if (Chart) {
-      setChartLoaded(true);
-    }
-  }, []);
-
-  // 2. Cargar los datos cuando el usuario o los días cambian
   useEffect(() => {
     if (user) {
       loadDashboard();
     }
   }, [days, user]);
-
-  // 3. Renderizar gráficos una vez que los datos cargaron y el DOM está listo
-  useEffect(() => {
-    if (!loading && data && chartLoaded) {
-      // Pequeño delay para asegurar que los refs (canvas) estén montados en el DOM
-      const timer = setTimeout(() => {
-        renderCharts(data);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, data, chartLoaded]);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -79,50 +62,6 @@ export default function DashboardView() {
     }
   };
 
-  const renderCharts = (d: any) => {
-    if (!Chart || !d) return;
-
-    // Trend Chart
-    if (trendChartRef.current) {
-      if (trendInstance.current) trendInstance.current.destroy();
-      trendInstance.current = new Chart(trendChartRef.current, {
-        type: "line",
-        data: {
-          labels: d.trends?.dates || [],
-          datasets: [
-            { label: "Críticas", data: d.trends?.critical || [], borderColor: "#ef4444", backgroundColor: "rgba(239,68,68,0.1)", fill: true, tension: 0.4 },
-            { label: "Altas", data: d.trends?.high || [], borderColor: "#f97316", backgroundColor: "rgba(249,115,22,0.1)", fill: true, tension: 0.4 },
-            { label: "Medias", data: d.trends?.medium || [], borderColor: "#eab308", backgroundColor: "rgba(234,179,8,0.1)", fill: true, tension: 0.4 },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom", labels: { color: "#94a3b8" } } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: "rgba(100,116,139,0.1)" }, ticks: { color: "#94a3b8" } },
-            x: { grid: { display: false }, ticks: { color: "#94a3b8" } },
-          },
-        },
-      });
-    }
-
-    // Distribution Chart
-    if (distChartRef.current) {
-      if (distInstance.current) distInstance.current.destroy();
-      const dist = d.distribution || {};
-      distInstance.current = new Chart(distChartRef.current, {
-        type: "doughnut",
-        data: {
-          labels: ["Críticas", "Altas", "Medias", "Bajas"],
-          datasets: [{ data: [dist.critical || 0, dist.high || 0, dist.medium || 0, dist.low || 0], backgroundColor: ["#ef4444", "#f97316", "#eab308", "#3b82f6"], borderWidth: 0 }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, cutout: "70%",
-          plugins: { legend: { position: "bottom", labels: { color: "#94a3b8" } } },
-        },
-      });
-    }
-  };
 
   if (!user || loading) {
     return (
@@ -138,6 +77,28 @@ export default function DashboardView() {
   const summary = data?.summary || {};
   const freqVulns = data?.frequent_vulnerabilities || [];
   const urls = data?.url_analysis || [];
+  
+  // Transform data for Recharts
+  const trendData = data?.trends?.dates?.map((date: string, i: number) => ({
+    name: date,
+    critical: data.trends.critical[i] || 0,
+    high: data.trends.high[i] || 0,
+    medium: data.trends.medium[i] || 0,
+    low: data.trends.low?.[i] || 0
+  })) || [];
+
+  const dist = data?.distribution || {};
+  const distData = [
+    { name: "Críticas", value: dist.critical || 0, color: "#ef4444" },
+    { name: "Altas", value: dist.high || 0, color: "#f97316" },
+    { name: "Medias", value: dist.medium || 0, color: "#eab308" },
+    { name: "Bajas", value: dist.low || 0, color: "#3b82f6" },
+  ].filter(d => d.value > 0);
+
+  const pieData = distData.map(d => ({
+    ...d,
+    value: hiddenSlices[d.name] ? 0 : d.value
+  }));
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -178,11 +139,67 @@ export default function DashboardView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="glass-card p-6 lg:col-span-2">
           <h3 className="text-lg font-bold text-white mb-4">Evolución de Vulnerabilidades</h3>
-          <div className="h-72"><canvas ref={trendChartRef} /></div>
+          <div className="h-72">
+            {trendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.1)" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px', cursor: 'pointer' }} 
+                    onClick={handleLegendClick}
+                  />
+                  <Line hide={hiddenLines['critical']} type="monotone" dataKey="critical" name="Críticas" stroke={hiddenLines['critical'] ? "#475569" : "#ef4444"} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                  <Line hide={hiddenLines['high']} type="monotone" dataKey="high" name="Altas" stroke={hiddenLines['high'] ? "#475569" : "#f97316"} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                  <Line hide={hiddenLines['medium']} type="monotone" dataKey="medium" name="Medias" stroke={hiddenLines['medium'] ? "#475569" : "#eab308"} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                  <Line hide={hiddenLines['low']} type="monotone" dataKey="low" name="Bajas" stroke={hiddenLines['low'] ? "#475569" : "#3b82f6"} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400">Sin datos de tendencias</div>
+            )}
+          </div>
         </div>
         <div className="glass-card p-6">
           <h3 className="text-lg font-bold text-white mb-4">Distribución por Severidad</h3>
-          <div className="h-72"><canvas ref={distChartRef} /></div>
+          <div className="h-72">
+            {distData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={hiddenSlices[entry.name] ? "#1e293b" : entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px', cursor: 'pointer' }} 
+                    onClick={handlePieLegendClick}
+                    formatter={(value) => (
+                      <span style={{ color: hiddenSlices[value] ? '#475569' : '#94a3b8' }}>{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-400">Sin datos de distribución</div>
+            )}
+          </div>
         </div>
       </div>
 
