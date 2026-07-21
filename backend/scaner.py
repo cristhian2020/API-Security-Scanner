@@ -273,11 +273,12 @@ ssl_prefer_server_ciphers on;""",
 class APIScanner:
     """Clase principal que ejecuta todos los escaneos usando VULNAPI"""
     
-    def __init__(self, target: str, deep_scan: bool = True, ssl_check: bool = True, scan_type: str = "url"):
+    def __init__(self, target: str, deep_scan: bool = True, ssl_check: bool = True, scan_type: str = "url", auth_token: str = None):
         self.target = target
         self.deep_scan = deep_scan
         self.ssl_check = ssl_check
         self.scan_type = scan_type
+        self.auth_token = auth_token
         self.results = {
             'url': target if scan_type == "url" else "Archivo OpenAPI",
             'timestamp': datetime.now().isoformat(),
@@ -308,6 +309,10 @@ class APIScanner:
             cmd = ["vulnapi", "scan", "curl", self.target]
             if not self.ssl_check:
                 cmd.append("-k")
+        
+        # Añadir header de auth si existe
+        if self.auth_token:
+            cmd.extend(["--header", f"Authorization: Bearer {self.auth_token}"])
             
         # Nombre de archivo de reporte temporal único
         os.makedirs("reports", exist_ok=True)

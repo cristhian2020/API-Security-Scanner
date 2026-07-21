@@ -264,9 +264,25 @@ export default function ScanResults({ results }: ScanResultsProps) {
     }
   };
 
+  const handleDownloadJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `reporte_seguridad_${new Date().getTime()}.json`);
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="space-y-6 fade-in relative">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 gap-3">
+        <button 
+          onClick={handleDownloadJSON} 
+          className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+        >
+          JSON
+        </button>
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGenerating}
@@ -278,7 +294,7 @@ export default function ScanResults({ results }: ScanResultsProps) {
               Generando...
             </>
           ) : (
-            <>📄 Descargar PDF</>
+            <>📄 PDF</>
           )}
         </button>
       </div>

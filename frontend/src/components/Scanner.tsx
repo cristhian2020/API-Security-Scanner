@@ -12,6 +12,7 @@ export default function Scanner() {
   const [scanMode, setScanMode] = useState<"url" | "openapi">("url");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [authToken, setAuthToken] = useState("");
   const [deepScan, setDeepScan] = useState(true);
   const [sslCheck, setSslCheck] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -46,6 +47,9 @@ export default function Scanner() {
         formData.append("url", url);
         formData.append("deep_scan", String(deepScan));
         formData.append("ssl_check", String(sslCheck));
+        if (authToken.trim()) {
+          formData.append("auth_token", authToken.trim());
+        }
       } else {
         formData.append("file", file!);
         endpoint = `${API_BASE}/api/scan/file`;
@@ -193,6 +197,17 @@ export default function Scanner() {
                     className="accent-purple-500 rounded" />
                   <span className="text-slate-300">Verificar certificado SSL/TLS</span>
                 </label>
+                <div className="mt-2">
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Token JWT (Opcional)</label>
+                  <input 
+                    type="text" 
+                    value={authToken} 
+                    onChange={(e) => setAuthToken(e.target.value)} 
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                    className="input-dark text-xs py-2"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Si la API requiere autenticación, ingresa el token aquí para escanear vulnerabilidades en JWT.</p>
+                </div>
               </div>
             </details>
           )}

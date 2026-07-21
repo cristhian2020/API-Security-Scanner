@@ -52,10 +52,10 @@ os.makedirs("reports", exist_ok=True)
 # Almacenamiento de escaneos (en memoria - para producción usar BD)
 scans = {}
 
-def run_scan_task(scan_id: str, target: str, deep_scan: bool, ssl_check: bool, scan_type: str = "url", user_id: str = None):
+def run_scan_task(scan_id: str, target: str, deep_scan: bool, ssl_check: bool, scan_type: str = "url", user_id: str = None, auth_token: str = None):
     """Ejecuta el escaneo en segundo plano"""
     try:
-        scanner = APIScanner(target, deep_scan, ssl_check, scan_type=scan_type)
+        scanner = APIScanner(target, deep_scan, ssl_check, scan_type=scan_type, auth_token=auth_token)
         results = scanner.scan_all()
         
         # Añadir metadatos
@@ -138,6 +138,7 @@ async def start_scan(
     url: str = Form(...),
     deep_scan: bool = Form(True),
     ssl_check: bool = Form(True),
+    auth_token: str = Form(None),
     authorization: str = Header(None)
 ):
     """Inicia un escaneo de una API URL (requiere auth)"""
@@ -162,7 +163,7 @@ async def start_scan(
         'user_id': user_id
     }
     
-    background_tasks.add_task(run_scan_task, scan_id, url, deep_scan, ssl_check, "url", user_id)
+    background_tasks.add_task(run_scan_task, scan_id, url, deep_scan, ssl_check, "url", user_id, auth_token)
     
     return JSONResponse({
         'scan_id': scan_id,
