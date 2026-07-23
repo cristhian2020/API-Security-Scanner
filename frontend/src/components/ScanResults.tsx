@@ -11,6 +11,10 @@ export interface Vulnerability {
   recommendation: string;
   code_example?: string;
   link?: string;
+  classifications?: {
+    owasp?: string;
+    cwe?: string;
+  };
 }
 
 export interface ScanResult {
@@ -445,6 +449,21 @@ export default function ScanResults({ results }: ScanResultsProps) {
                       {isExpanded && (
                         <div className="px-4 pb-4 sm:px-6 sm:pb-6 pt-0 border-t border-slate-700/50 mt-2 pt-4">
                           <p className="text-slate-400 text-sm mb-4">{vuln.description}</p>
+
+                          {(vuln.classifications?.owasp || vuln.classifications?.cwe) && (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {vuln.classifications?.owasp && (
+                                <span className="px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-[10px] text-slate-300 font-mono">
+                                  {vuln.classifications.owasp}
+                               </span>
+                              )}
+                              {vuln.classifications?.cwe && (
+                                <span className="px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-[10px] text-slate-300 font-mono">
+                                  {vuln.classifications.cwe}
+                                </span>
+                              )}
+                            </div>
+                          )}
 
                           <div className="grid md:grid-cols-2 gap-3">
                             <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">

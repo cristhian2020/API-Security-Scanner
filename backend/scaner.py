@@ -27,7 +27,7 @@ server_tokens off;
 # En Apache:
 ServerTokens Prod
 ServerSignature Off""",
-        "link": "https://owasp.org/www-project-secure-headers/#server"
+        "link": "https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server"
     },
     "discover.server_signature": {
         "title": "Exposición de información del servidor (Firma de Servidor)",
@@ -139,7 +139,7 @@ response.headers["X-Frame-Options"] = "DENY" """,
         "recommendation": "Configura HSTS con un 'max-age' prolongado, incluyendo subdominios y pre-carga si es posible.",
         "code_example": """# Agregar HSTS (forzar HTTPS durante 1 año)
 response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload" """,
-        "link": "https://owasp.org/www-project-secure-headers/#strict-transport-security"
+        "link": "https://developer.mozilla.org/es/docs/Web/HTTP/Reference/Headers/Strict-Transport-Secu"
     },
     "broken_authentication.alg_none": {
         "title": "Algoritmo JWT 'none' permitido",
@@ -266,7 +266,66 @@ if ($request_method ~ ^(TRACE)$ ) {
         "code_example": """# Forzar TLS 1.3 en Nginx
 ssl_protocols TLSv1.2 TLSv1.3;
 ssl_prefer_server_ciphers on;""",
-        "link": "https://owasp.org/www-project-secure-headers/#strict-transport-security"
+        "link": "https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html"
+    },
+    "security_misconfiguration.http_headers_cors_missing": {
+        "title": "Cabeceras CORS faltantes",
+        "severity": "medium",
+        "description": "El servidor no incluye las cabeceras CORS (Cross-Origin Resource Sharing) en sus respuestas.",
+        "impact": "La falta de una política CORS explícita puede llevar a comportamientos inesperados para integraciones web legítimas o advertencias de seguridad, indicando una configuración menos estricta de la API.",
+        "recommendation": "Configura una política CORS explícita y restrictiva solo para dominios de confianza que requieran consumir tu API.",
+        "code_example": """# En FastAPI - Configuración de CORS explícita
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://tu-sitio-seguro.com"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)""",
+        "link": "https://developer.mozilla.org/es/docs/Web/HTTP/CORS"
+    },
+    "security_misconfiguration.http_cookies_expires_not_set": {
+        "title": "Cookies sin fecha de expiración (Expires/Max-Age no configurado)",
+        "severity": "low",
+        "description": "Se detectaron cookies que no tienen configurada una fecha de caducidad.",
+        "impact": "La cookie se convierte en una 'cookie de sesión'. Si el usuario no cierra el navegador, la sesión puede quedar activa indefinidamente, aumentando el riesgo de secuestro de sesión (Session Hijacking) si alguien accede a la máquina.",
+        "recommendation": "Establece un tiempo máximo de vida usando las directivas 'Expires' o 'Max-Age' en todas las cookies de sesión o autenticación.",
+        "code_example": """# En FastAPI - Establecer Max-Age (tiempo en segundos)
+response.set_cookie(key="session_token", value="...", max_age=3600, httponly=True, secure=True)""",
+        "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie"
+    },
+    "security_misconfiguration.http_headers_x_xss_protection_missing": {
+        "title": "Header X-XSS-Protection faltante",
+        "severity": "low",
+        "description": "La API no responde con la cabecera X-XSS-Protection.",
+        "impact": "Navegadores antiguos pueden carecer de protección contra ataques básicos de Cross-Site Scripting (XSS) reflejado.",
+        "recommendation": "Agrega la cabecera 'X-XSS-Protection: 1; mode=block'. Nota: Los navegadores modernos usan CSP en su lugar, pero es útil como medida de defensa en profundidad.",
+        "code_example": """# Agregar directiva X-XSS-Protection
+response.headers["X-XSS-Protection"] = "1; mode=block" """,
+        "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection"
+    },
+    "security_misconfiguration.http_headers_cache_control_missing": {
+        "title": "Header Cache-Control faltante en información sensible",
+        "severity": "low",
+        "description": "Las cabeceras Cache-Control no están configuradas correctamente en la API.",
+        "impact": "Las respuestas pueden ser cacheadas por el navegador o proxies intermediarios, exponiendo datos de respuestas previas accidentalmente.",
+        "recommendation": "Asegúrate de desactivar la caché ('no-store') en los endpoints que retornen datos personales, tokens o información sensible.",
+        "code_example": """# Agregar directivas de no-cache
+response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+response.headers["Pragma"] = "no-cache" """,
+        "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control"
+    },
+    "security_misconfiguration.http_cookies_samesite_not_set": {
+        "title": "Cookies sin el atributo SameSite",
+        "severity": "medium",
+        "description": "Las cookies de autenticación o sesión no tienen configurado el atributo SameSite.",
+        "impact": "El navegador podría enviar la cookie en solicitudes cruzadas (cross-site), lo que hace que la aplicación sea vulnerable a ataques de Falsificación de Petición en Sitios Cruzados (CSRF).",
+        "recommendation": "Configura el atributo SameSite en 'Lax' o 'Strict' para todas las cookies importantes.",
+        "code_example": """# En FastAPI - Establecer atributo SameSite
+response.set_cookie(key="session_token", value="...", samesite="lax", httponly=True, secure=True)""",
+        "link": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite"
     }
 }
 
@@ -364,6 +423,7 @@ class APIScanner:
                 name = issue.get("name", "")
                 url_link = issue.get("url", "")
                 cvss_score = issue.get("cvss", {}).get("score", 0.0)
+                classifications = issue.get("classifications", {})
                 
                 # Clasificar severidad
                 severity = "low"
@@ -404,7 +464,7 @@ class APIScanner:
                     impact = mapped["impact"]
                     recommendation = mapped["recommendation"]
                     code_example = mapped["code_example"]
-                    link = mapped["link"]
+                    link = url_link or mapped["link"]
                 else:
                     title = name
                     description = f"Vulnerabilidad detectada por VulnAPI: {name}."
@@ -421,7 +481,8 @@ class APIScanner:
                     'impact': impact,
                     'recommendation': recommendation,
                     'code_example': code_example,
-                    'link': link
+                    'link': link,
+                    'classifications': classifications
                 })
                 
             # Integrar ActiveFuzzer (SQLi y Rate Limiting) si deep_scan está habilitado y es una URL

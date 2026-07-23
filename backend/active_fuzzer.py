@@ -124,7 +124,7 @@ class ActiveFuzzer:
                     'impact': 'Permite ataques de Fuerza Bruta, Denegación de Servicio (DoS) y consumo excesivo de recursos de la API.',
                     'recommendation': 'Implementa un mecanismo de Rate Limiting por IP o token de usuario (ej. 100 peticiones por minuto).',
                     'code_example': '# En FastAPI usando slowapi:\\nfrom slowapi import Limiter\\nlimiter = Limiter(key_func=get_remote_address)\\n\\n@app.get("/api")\\n@limiter.limit("5/minute")\\nasync def endpoint():\\n    pass',
-                    'link': 'https://owasp.org/www-project-api-security-top-10/#api4-2023-unrestricted-resource-consumption'
+                    'link': 'https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/'
                 })
         
         return vulns
